@@ -45,4 +45,46 @@ Para que la data sea vendible, debe cumplir con **Privacidad Diferencial**:
 2. **Affordability Scores:** Modelos de solvencia para bancos basados en comportamiento real de gasto/ahorro, no solo en saldos estáticos.
 3. **Share of Wallet:** Análisis de competencia para marcas (ej. cuánto gasta tu cliente en la competencia).
 
+# User Journey 
+Este es el **User Journey** depurado. He eliminado la narrativa de marketing y el lenguaje complejo para dejar una estructura de **diseño de producto y negocio** clara, ideal para una tabla o una infografía en Notion.
+
+---
+
+# User Journey: SmartSpend MVP
+
+## Perfil A: El Usuario ("Santi")
+
+**Objetivo:** Registrar gastos sin interrumpir su vida y entender su capacidad de gasto real.
+
+| Etapa | Acción del Usuario | Punto de Dolor (Tradicional) | Solución SmartSpend | Emoción | Oportunidad (HMW) |
+| --- | --- | --- | --- | --- | --- |
+| **1. Gasto** | Paga un café o almuerzo. | Olvida el monto o pierde el ticket. | El gasto queda fresco en la memoria. | Ansiedad leve | ¿Cómo podríamos recordarle registrar sin ser invasivos? |
+| **2. Registro** | Envía un mensaje de texto o voz por WhatsApp. | Tener que abrir una app, loguearse y buscar categorías. | **Zero-UI:** Registro mediante lenguaje natural en 3 segundos. | Alivio / Control | ¿Cómo podríamos hacer que el bot entienda jerga local? |
+| **3. Procesamiento** | Recibe confirmación del bot. | Clasificar mal el gasto o dudar si se guardó. | La IA categoriza y confirma: *"Listo, $15 en comida"*. | Confianza | ¿Cómo podríamos permitir correcciones con un solo toque? |
+| **4. Consulta** | Mira su balance semanal en el dashboard. | Ver gráficos complejos que no dicen cuánto puede gastar hoy. | Indicador simple: *"Te quedan $200 para la semana"*. | Seguridad | ¿Cómo podríamos predecir su gasto del fin de semana? |
+
+---
+
+## Perfil B: El Analista B2B ("Carla")
+
+**Objetivo:** Identificar patrones de consumo reales para toma de decisiones comerciales.
+
+| Etapa | Acción de la Empresa | Punto de Dolor (Actual) | Valor SmartSpend | Emoción | Oportunidad (HMW) |
+| --- | --- | --- | --- | --- | --- |
+| **1. Necesidad** | Busca ubicación para una nueva sucursal. | Datos de encuestas desactualizados o sesgados. | Acceso a **comportamiento de gasto real** y reciente. | Incertidumbre | ¿Cómo podríamos segmentar por micro-zonas (códigos postales)? |
+| **2. Análisis** | Filtra data por demografía y categoría. | Data bancaria "sucia" o sin contexto (no saben qué se compró). | Data estructurada y anonimizada de gastos específicos. | Claridad | ¿Cómo podríamos cruzar estos datos con horarios de mayor flujo? |
+| **3. Hallazgo** | Detecta un nicho de mercado desatendido. | Riesgo de inversión basado en suposiciones. | Evidencia de que el target gasta $X en la zona Y. | Entusiasmo | ¿Cómo podríamos vender reportes de "Share of Wallet" mensual? |
+| **4. Decisión** | Lanza campaña o abre local. | Retorno de inversión (ROI) incierto. | Reducción del riesgo mediante **Predictive Solvability**. | Éxito | ¿Cómo podríamos medir el impacto del nuevo local en la data? |
+
+---
+<img width="2752" height="1536" alt="image" src="https://github.com/user-attachments/assets/d5af5680-8551-42ec-bbd6-2164b239662e" />
+
+## Resumen de Validación de Hipótesis
+
+* **Para Santi (B2C):** Validamos que la **fricción mínima** genera recurrencia. Si el registro toma < 5 segundos, el usuario no abandona.
+* **Para Carla (B2B):** Validamos que la **data cualitativa** (el "qué" y "dónde" del mensaje de texto) es más valiosa que la data puramente bancaria.
+
+
+
+
 
