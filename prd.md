@@ -89,4 +89,53 @@ Validar si el registro en <3 segundos mediante texto/voz aumenta la frecuencia d
 * **Anonimización:** Los reportes B2B eliminan `user_id`, `phone_number` y `exact_location`, sustituyéndolos por `cohort_id` y `region_code`.
 * **Cumplimiento:** Encriptación de datos sensibles en tránsito y reposo.
 
+
+
+
+
+# Análisis Técnico y Estratégico: SmartSpend MVP
+
+## 1. Herramientas Recomendadas por Etapa
+
+| Etapa | Herramienta | Justificación |
+| --- | --- | --- |
+| **Research / Validación** | **The Mom Test + WhatsApp Business** | Entrevistas para detectar el "dolor" real y uso de estados de WhatsApp para medir interés de registro rápido. |
+| **Prototipado Rápido** | **Typebot.io / v0.dev** | Permite crear flujos conversacionales (chat) y dashboards frontend en horas sin tocar código complejo. |
+| **Desarrollo MVP** | **Python (FastAPI) + LangChain** | Python es el estándar para IA. FastAPI es extremadamente rápido y LangChain facilita conectar el chat con el LLM (GPT-4o). |
+| **Motor de IA (NLP)** | **OpenAI API (GPT-4o-mini)** | Suficientemente potente para extraer entidades (monto, categoría) con un costo mínimo por transacción. |
+| **Base de Datos** | **Supabase (PostgreSQL)** | Maneja autenticación, base de datos relacional y almacenamiento de forma integrada y escalable. |
+| **Integración Chat** | **Telegram Bot API / Twilio (WhatsApp)** | Telegram es gratuito y fácil de integrar para el MVP; Twilio es el estándar para escalar a WhatsApp. |
+| **Conversión Divisas** | **Fixer.io / Open Exchange Rates** | API sencilla para normalizar todos los gastos a una moneda base en el backend. |
+
+---
+
+## 2. Casos de Uso en Tiempo Real
+
+* **Gasto Multi-Entidad:** El usuario escribe: *"Gasté 30 en comida y 10 en el taxi"*. El sistema debe generar dos registros separados vinculados a una misma interacción.
+* **Registro en Viaje (Multi-moneda):** El usuario (moneda base MXN) escribe: *"15 euros en café"*. El sistema detecta "EUR", consulta el tipo de cambio y registra el valor tanto en EUR como su equivalente en MXN.
+* **Smart Prompt (Recuperación de baches):** Si el usuario no registra nada en 48 horas, el bot envía un mensaje: *"Hola, no he visto registros últimamente. ¿Olvidaste anotar algo importante hoy?"*.
+* **Consulta de Insight B2B:** Una empresa consulta: *"¿Cuál es el ticket promedio en cafeterías en el sector 'Palermo' los fines de semana?"*. El sistema devuelve data agregada de 100+ usuarios de esa zona.
+
+---
+
+## 3. Rentabilidad y Plazos
+
+* **Corto plazo (0-6 meses): Validación B2C**
+* **Modelo:** Gratis (Freemium).
+* **Objetivo:** Captar 500-1000 usuarios activos para entrenar la IA y validar que la tasa de registro diario es superior a las apps tradicionales.
+* **Costo:** Principalmente infraestructura de nube y tokens de IA (estimado <$100 USD/mes para este volumen).
+
+
+* **Mediano plazo (6-18 meses): Monetización Híbrida**
+* **B2C:** Suscripción "Pro" ($3-5 USD/mes) por reportes personalizados, exportación a Excel y presupuestos inteligentes.
+* **B2B Pilot:** Venta de reportes estáticos a comercios locales sobre hábitos de consumo en su zona.
+
+
+* **Largo plazo (18+ meses): Data-as-a-Service (DaaS)**
+* **Modelo:** Suscripción B2B empresarial ($500+ USD/mes).
+* **Valor:** API de acceso a insights de consumo en tiempo real para bancos (credit scoring alternativo) y grandes cadenas de Retail (ubicación de nuevas sucursales).
+
+
+
+-
 ---
