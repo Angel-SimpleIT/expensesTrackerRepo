@@ -1,0 +1,6 @@
+# Project Rules
+
+## Documentation
+- **Prompt Logging**: For every *new* important instruction or feature request provided by the user, record the prompt and append a summary of the prompt to `PROMPT_LOG.md`.
+  - **Exclude**: Troubleshooting requests, minor confirmations, and "how-to" questions.
+  - **Include**: Feature requests, architectural changes, design instructions.
