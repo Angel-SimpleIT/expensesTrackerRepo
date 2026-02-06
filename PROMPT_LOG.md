@@ -171,7 +171,7 @@ Largo plazo (18+ meses): Consolidación como "Data Vendor". Venta de suscripcion
 
 Formato de respuesta: Listas organizadas por categoría con una justificación técnica o de negocio breve para cada punto. Evitar lenguaje aspiracional; centrarse en factibilidad y retorno de inversión.
 
-## Infographic Generation Prompt (Refined) (2026-02-06)
+## Strategic analysis Prompt (Refined) (2026-02-06)
 
 **Contexto:** Estoy desarrollando una interfaz de registro de gastos "invisible" basada en mensajería (WhatsApp/Telegram) que utiliza un motor de Procesamiento de Lenguaje Natural (LLM) para eliminar la fricción de entrada y genera un dataset estructurado y anonimizado para análisis B2B.
 
@@ -194,3 +194,47 @@ Validar si el registro en <3 segundos mediante texto/voz aumenta la frecuencia d
 4. **Destaca la oportunidad** de una solución digital centralizada.
 
 **Formato de respuesta:** Concisa, Lista estructurada con viñetas claras y ejemplos concretos.
+
+## Figma UI/UX Prompt (2026-02-06)
+
+**Role:** Senior UI/UX Fintech Designer.
+**Project:** SmartSpend - A "Zero-UI" expense tracker focused on AI-driven speed (B2C) and high-value data analytics (B2B).
+
+**General Visual Style:**
+*   **Aesthetic:** Ultra-clean, Minimalist, Airy (look & feel: Apple Wallet, Stripe Dashboard).
+*   **Design Language:** High-key layout, soft boundaries, "Card-on-Canvas" style.
+*   **Palette:**
+    *   Background: Pure White (#FFFFFF) or very light gray (#F9FAFB).
+    *   Cards: White with a subtle 1px border in Gray-200 (#E5E7EB).
+    *   Accents: Indigo-600 (#4F46E5) for primary actions.
+    *   Data Colors: Emerald-500 for savings/income, Rose-500 for expenses (soft, not neon).
+*   **Typography:** Inter or Geist. High contrast: Black (#09090b) for headers, Medium Gray (#6b7280) for subtext.
+
+**Screens & Views to Generate:**
+
+1.  **Home/Dashboard (User View - "Santi"):**
+    *   **Header:** "Bienvenido, Santi" in bold black. A subtle "Pulse" icon showing the Bot is active.
+    *   **Main Card:** A "Glassmorphism" effect (subtle blur) or a very clean white card showing "Disponible para gastar hoy". Use a large, bold font for the amount.
+    *   **Spending List:** Use high-quality, colorful but flat icons for categories. Each row should have ample "white space" (padding).
+    *   **Interactive Element:** A small badge that says "Auto-categorized" in a soft purple tint.
+
+2.  **B2B Analytics Dashboard (Admin View - "Carla"):**
+    *   **Purpose:** Professional Business Intelligence.
+    *   **Visuals:** White background with a sidebar in a very light gray (#F3F4F6).
+    *   **Charts:** Use Recharts-style Area Charts with a soft Indigo gradient fill (opacity 10%). Lines should be crisp (2px width).
+    *   **Tables:** Clean, no zebra-striping. Use subtle dividers. Highlight "Anonymized Data" with a security shield icon.
+
+3.  **Add/Edit Transaction (Mobile Overlay):**
+    *   **Style:** A "Bottom Sheet" or Drawer that slides up.
+    *   **Amount Input:** Huge, centered black numbers.
+    *   **Category Grid:** Rounded-full buttons with icons. When selected, the button turns Indigo with a white icon.
+
+**Extra UI Details:**
+*   **Soft Shadows:** Use "Shadow-sm" or "Shadow-md" with very low opacity (3-5%) so the cards seem to float slightly.
+*   **Empty States:** Use minimalist line illustrations (Outline style).
+*   **Grid:** Make sure to use a 8pt grid system for spacing.
+
+**Rationale for this style:**
+*   **Legibilidad:** En condiciones de mucha luz (en la calle pagando un café), el modo claro es mucho más legible que el oscuro.
+*   **Psicología del Color:** El blanco y el azul índigo se asocian con la banca moderna y la tecnología segura.
+*   **Foco en la Data:** Al no tener un fondo negro que "pesa", los números y los gráficos de colores resaltan mucho más, facilitando la toma de decisiones para "Carla".
