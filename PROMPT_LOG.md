@@ -11,6 +11,7 @@ It excludes troubleshooting steps and minor confirmations.
 | 2026-02-06 | Infrastructure | Retry NotebookLM MCP setup: Use uv/pip, locate config, auth, verify |
 | 2026-02-07 | Design/Figma | Sprint 1-4 Figma Prompts for Dashboard, Transactions, Categories, and Chat Sandbox |
 | 2026-02-07 | Frontend/Auth | Login + Auth Logic Prompt for Supabase and Protected Routes |
+| 2026-02-07 | Frontend/WhatsApp | WhatsApp Linkage Flow in Settings Page |
 
 ## Ideation Prompt (2026-02-06)
 
@@ -336,3 +337,21 @@ Configura dos usuarios de prueba en el código:
 santi@test.com (role: user)
 
 carla@test.com (role: admin_b2b)"
+
+## WhatsApp Linkage Flow (2026-02-07)
+
+**Rol:** Senior Fullstack Developer. **Tarea:** Crear el flujo de vinculación de WhatsApp en la página de Configuración de SmartSpend.
+
+1. **Componente de Vinculación:**
+   - Crea una sección llamada "Conectar Canales".
+   - Si `profile.bot_user_id` está vacío, muestra un estado "Desconectado" con un botón "Generar Código de Conexión".
+   - Al presionar, genera un código aleatorio de 6 dígitos, guárdalo en `profiles.pairing_code` y muéstralo en pantalla con un diseño elegante.
+   - Incluye un botón "Abrir WhatsApp" que use el link `https://wa.me/TU_NUMERO_BOT?text=CONECTAR%20[CODIGO]`.
+
+2. **Estado Conectado:**
+   - Si `profile.bot_user_id` ya tiene un valor, muestra un badge verde "WhatsApp Conectado" y la opción de "Desvincular".
+
+3. **Security & Style:**
+   - **Seguridad de Roles:** Esta sección solo visible para el rol `user` (Santi). Los admins (Carla) no necesitan vincular bots personales.
+   - **Estilo:** Sigue la línea "Light Mode" de Apple Card, usa iconos de la librería Lucide (`MessageSquare` y `Link`).
+   - **Guía de Estilo:** Mantener siempre la "Guía de Estilo" (Light Mode, Indigo-600 como acento, bordes de 1px).

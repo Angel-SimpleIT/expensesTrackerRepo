@@ -8,6 +8,7 @@ interface AuthContextType {
   loading: boolean;
   signIn: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
   signOut: () => Promise<void>;
+  updateProfile: (updates: Partial<Profile>) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -44,12 +45,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const mockUser = MOCK_USERS[sessionData.email as keyof typeof MOCK_USERS];
         if (mockUser) {
           setUser({ id: mockUser.id, email: mockUser.email } as User);
+          
+          // Load profile data from localStorage
+          const savedProfile = localStorage.getItem(`smartspend_profile_${mockUser.id}`);
+          const profileData = savedProfile ? JSON.parse(savedProfile) : {};
+          
           setProfile({
             id: mockUser.id,
             email: mockUser.email,
             role: mockUser.role,
             name: mockUser.name,
             created_at: new Date().toISOString(),
+            bot_user_id: profileData.bot_user_id || null,
+            pairing_code: profileData.pairing_code || null,
           });
         }
       } catch (error) {
@@ -102,8 +110,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setProfile(null);
   };
 
+  const updateProfile = (updates: Partial<Profile>) => {
+    if (profile) {
+      const updatedProfile = { ...profile, ...updates };
+      setProfile(updatedProfile);
+      
+      // Save to localStorage (simulate backend persistence)
+      localStorage.setItem(`smartspend_profile_${profile.id}`, JSON.stringify({
+        bot_user_id: updatedProfile.bot_user_id,
+        pairing_code: updatedProfile.pairing_code,
+      }));
+    }
+  };
+
   return (
-    <AuthContext.Provider value={{ user, profile, loading, signIn, signOut }}>
+    <AuthContext.Provider value={{ user, profile, loading, signIn, signOut, updateProfile }}>
       {children}
     </AuthContext.Provider>
   );

@@ -8,7 +8,8 @@ import {
   LogOut,
   Radio,
   BarChart3,
-  Users
+  Users,
+  Settings
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -26,6 +27,7 @@ export function Sidebar() {
     { icon: LayoutDashboard, label: 'Mi Dashboard', path: '/dashboard' },
     { icon: Clock, label: 'Historial', path: '/history' },
     { icon: MessageCircle, label: 'Chat Bot', path: '/chat' },
+    { icon: Settings, label: 'Configuración', path: '/settings' },
   ];
 
   const adminMenuItems = [
@@ -72,7 +74,9 @@ export function Sidebar() {
         {profile?.role === 'user' && (
           <div className="mt-3 flex items-center gap-2 px-2 py-1.5 bg-[#F0FDF4] border border-[#BBF7D0] rounded-lg">
             <Radio className="w-3 h-3 text-[#10B981]" />
-            <span className="text-xs text-[#10B981] font-medium">Bot activo</span>
+            <span className="text-xs text-[#10B981] font-medium">
+              {profile?.bot_user_id ? 'WhatsApp conectado' : 'Bot disponible'}
+            </span>
             <span className="w-1.5 h-1.5 bg-[#10B981] rounded-full animate-pulse ml-auto" />
           </div>
         )}
