@@ -1,173 +1,112 @@
-import { useState } from "react";
-import { Link } from "react-router";
-import { 
-  ArrowLeft,
+import { useState, useMemo } from "react";
+import {
   Search,
   Filter,
-  Coffee, 
-  ShoppingBag, 
-  Home, 
-  Car, 
+  Coffee,
+  ShoppingBag,
+  Home,
+  Car,
   Utensils,
   Smartphone,
   Heart,
   Plane,
   Film,
-  TrendingDown,
-  TrendingUp
+  Circle,
+  Loader2
 } from "lucide-react";
 import { EditTransactionModal } from "../components/EditTransactionModal";
+import { useTransactions } from "../hooks/useData";
 
-interface Transaction {
-  id: string;
-  merchant: string;
-  merchantInitial: string;
-  category: string;
-  categoryIcon: string;
-  categoryColor: string;
-  amount: number;
-  type: "income" | "expense";
-  originalText: string;
-  date: string;
-  timestamp: string;
-}
+// Color palette for categories
+const CATEGORY_COLORS: Record<string, string> = {
+  'Alimentación': '#EF4444',
+  'Transporte': '#3B82F6',
+  'Compras': '#8B5CF6',
+  'Hogar': '#06B6D4',
+  'Café': '#F59E0B',
+  'Entretenimiento': '#F43F5E',
+  'Salud': '#10B981',
+  'Teléfono': '#10B981',
+  'Viajes': '#6366F1',
+};
 
-const mockTransactions: Transaction[] = [
-  {
-    id: "1",
-    merchant: "Starbucks",
-    merchantInitial: "S",
-    category: "Café",
-    categoryIcon: "coffee",
-    categoryColor: "#F59E0B",
-    amount: 4.50,
-    type: "expense",
-    originalText: "4.50 en cafe",
-    date: "2026-02-06",
-    timestamp: "Hoy, 10:30",
-  },
-  {
-    id: "2",
-    merchant: "Amazon",
-    merchantInitial: "A",
-    category: "Compras",
-    categoryIcon: "shopping",
-    categoryColor: "#8B5CF6",
-    amount: 125.00,
-    type: "expense",
-    originalText: "125 amazon auriculares",
-    date: "2026-02-05",
-    timestamp: "Ayer, 15:20",
-  },
-  {
-    id: "3",
-    merchant: "Uber",
-    merchantInitial: "U",
-    category: "Transporte",
-    categoryIcon: "car",
-    categoryColor: "#3B82F6",
-    amount: 12.30,
-    type: "expense",
-    originalText: "12.30 uber centro",
-    date: "2026-02-05",
-    timestamp: "Ayer, 09:15",
-  },
-  {
-    id: "4",
-    merchant: "La Tagliatella",
-    merchantInitial: "T",
-    category: "Restaurante",
-    categoryIcon: "utensils",
-    categoryColor: "#EF4444",
-    amount: 56.80,
-    type: "expense",
-    originalText: "cena 56.80",
-    date: "2026-02-04",
-    timestamp: "4 Feb",
-  },
-  {
-    id: "5",
-    merchant: "Empresa SA",
-    merchantInitial: "E",
-    category: "Salario",
-    categoryIcon: "trending-up",
-    categoryColor: "#10B981",
-    amount: 3200.00,
-    type: "income",
-    originalText: "salario febrero",
-    date: "2026-02-01",
-    timestamp: "1 Feb",
-  },
-  {
-    id: "6",
-    merchant: "Mercadona",
-    merchantInitial: "M",
-    category: "Compras",
-    categoryIcon: "shopping",
-    categoryColor: "#8B5CF6",
-    amount: 45.60,
-    type: "expense",
-    originalText: "45 mercadona",
-    date: "2026-01-31",
-    timestamp: "31 Ene",
-  },
-  {
-    id: "7",
-    merchant: "Netflix",
-    merchantInitial: "N",
-    category: "Entretenimiento",
-    categoryIcon: "film",
-    categoryColor: "#F43F5E",
-    amount: 15.99,
-    type: "expense",
-    originalText: "netflix mensual",
-    date: "2026-01-30",
-    timestamp: "30 Ene",
-  },
-  {
-    id: "8",
-    merchant: "Vodafone",
-    merchantInitial: "V",
-    category: "Teléfono",
-    categoryIcon: "phone",
-    categoryColor: "#10B981",
-    amount: 35.00,
-    type: "expense",
-    originalText: "35 telefono",
-    date: "2026-01-29",
-    timestamp: "29 Ene",
-  },
-];
+const DEFAULT_COLOR = '#6B7280';
 
 const getIcon = (iconName: string) => {
   const icons: Record<string, any> = {
     coffee: Coffee,
-    shopping: ShoppingBag,
+    "shopping-bag": ShoppingBag,
     car: Car,
     utensils: Utensils,
-    phone: Smartphone,
+    smartphone: Smartphone,
     home: Home,
-    health: Heart,
+    heart: Heart,
     plane: Plane,
     film: Film,
-    "trending-up": TrendingUp,
-    "trending-down": TrendingDown,
+    circle: Circle,
   };
-  return icons[iconName] || Coffee;
+  return icons[iconName] || Circle;
+};
+
+// Format date to relative or absolute string
+const formatDate = (dateString: string) => {
+  const date = new Date(dateString);
+  const now = new Date();
+  const diffTime = now.getTime() - date.getTime();
+  const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+
+  if (diffDays === 0) {
+    return `Hoy, ${date.toLocaleTimeString('es', { hour: '2-digit', minute: '2-digit' })}`;
+  } else if (diffDays === 1) {
+    return `Ayer, ${date.toLocaleTimeString('es', { hour: '2-digit', minute: '2-digit' })}`;
+  } else {
+    return date.toLocaleDateString('es', { day: 'numeric', month: 'short' });
+  }
 };
 
 export function History() {
-  const [selectedTransaction, setSelectedTransaction] = useState<Transaction | null>(null);
+  const { transactions, loading, error } = useTransactions();
+  const [selectedTransaction, setSelectedTransaction] = useState<any | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
 
-  const filteredTransactions = mockTransactions.filter((transaction) => {
+  // Filter transactions based on search query
+  const filteredTransactions = useMemo(() => {
+    if (!searchQuery) return transactions;
+
     const query = searchQuery.toLowerCase();
-    return (
-      transaction.merchant.toLowerCase().includes(query) ||
-      transaction.category.toLowerCase().includes(query) ||
-      transaction.originalText.toLowerCase().includes(query)
+    return transactions.filter((t) =>
+      t.merchant_name?.toLowerCase().includes(query) ||
+      t.category_name?.toLowerCase().includes(query) ||
+      t.raw_text?.toLowerCase().includes(query)
     );
-  });
+  }, [transactions, searchQuery]);
+
+  // Calculate totals
+  const totalExpenses = useMemo(() =>
+    transactions.reduce((sum, t) => sum + t.amount_original, 0),
+    [transactions]
+  );
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-[#F9FAFB] flex items-center justify-center">
+        <div className="text-center">
+          <Loader2 className="w-8 h-8 animate-spin text-[#4F46E5] mx-auto mb-4" />
+          <p className="text-[#6B7280]">Cargando historial...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-[#F9FAFB] flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-[#F43F5E]">Error: {error}</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-[#F9FAFB]">
@@ -201,23 +140,42 @@ export function History() {
         <div className="bg-white rounded-2xl border border-[#E5E7EB] shadow-sm overflow-hidden">
           {filteredTransactions.length === 0 ? (
             <div className="p-12 text-center">
-              <p className="text-[#6B7280]">No se encontraron transacciones</p>
+              <p className="text-[#6B7280]">
+                {transactions.length === 0
+                  ? "No tienes transacciones registradas"
+                  : "No se encontraron transacciones"}
+              </p>
             </div>
           ) : (
             <div className="divide-y divide-[#E5E7EB]">
               {filteredTransactions.map((transaction) => {
-                const IconComponent = getIcon(transaction.categoryIcon);
+                const categoryColor = CATEGORY_COLORS[transaction.category_name || ''] || DEFAULT_COLOR;
+                const IconComponent = getIcon(transaction.category_icon || 'circle');
+                const merchantInitial = (transaction.merchant_name || 'X')[0].toUpperCase();
+
                 return (
                   <button
                     key={transaction.id}
-                    onClick={() => setSelectedTransaction(transaction)}
+                    onClick={() => setSelectedTransaction({
+                      id: transaction.id,
+                      merchant: transaction.merchant_name || 'Sin comercio',
+                      merchantInitial,
+                      category: transaction.category_name || 'Sin categoría',
+                      categoryIcon: transaction.category_icon || 'circle',
+                      categoryColor,
+                      amount: transaction.amount_original,
+                      type: 'expense' as const,
+                      originalText: transaction.raw_text || '',
+                      date: transaction.created_at.split('T')[0],
+                      timestamp: formatDate(transaction.created_at),
+                    })}
                     className="w-full p-5 hover:bg-[#F9FAFB] transition-colors text-left"
                   >
                     <div className="flex items-center gap-4">
                       {/* Merchant Logo */}
                       <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-[#4F46E5] to-[#6366F1] flex items-center justify-center flex-shrink-0 shadow-sm">
                         <span className="text-white font-semibold text-lg">
-                          {transaction.merchantInitial}
+                          {merchantInitial}
                         </span>
                       </div>
 
@@ -225,36 +183,37 @@ export function History() {
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-1">
                           <p className="font-semibold text-[#09090b]">
-                            {transaction.merchant}
+                            {transaction.merchant_name || 'Sin comercio'}
                           </p>
                           {/* Category Badge */}
-                          <div className="flex items-center gap-1 px-2 py-0.5 rounded-full" style={{ backgroundColor: `${transaction.categoryColor}15` }}>
-                            <IconComponent 
-                              className="w-3 h-3" 
-                              style={{ color: transaction.categoryColor }}
+                          <div
+                            className="flex items-center gap-1 px-2 py-0.5 rounded-full"
+                            style={{ backgroundColor: `${categoryColor}15` }}
+                          >
+                            <IconComponent
+                              className="w-3 h-3"
+                              style={{ color: categoryColor }}
                             />
-                            <span className="text-xs font-medium" style={{ color: transaction.categoryColor }}>
-                              {transaction.category}
+                            <span
+                              className="text-xs font-medium"
+                              style={{ color: categoryColor }}
+                            >
+                              {transaction.category_name || 'Sin categoría'}
                             </span>
                           </div>
                         </div>
                         <p className="text-sm text-[#6B7280] mb-1">
-                          "{transaction.originalText}"
+                          "{transaction.raw_text || 'Sin descripción'}"
                         </p>
                         <p className="text-xs text-[#9CA3AF]">
-                          {transaction.timestamp}
+                          {formatDate(transaction.created_at)}
                         </p>
                       </div>
 
                       {/* Amount */}
                       <div className="text-right flex-shrink-0">
-                        <p 
-                          className="text-xl font-bold"
-                          style={{ 
-                            color: transaction.type === "income" ? "#10B981" : "#F43F5E" 
-                          }}
-                        >
-                          {transaction.type === "income" ? "+" : "-"}€{transaction.amount.toFixed(2)}
+                        <p className="text-xl font-bold text-[#F43F5E]">
+                          -${transaction.amount_original.toFixed(2)}
                         </p>
                       </div>
                     </div>
@@ -270,19 +229,13 @@ export function History() {
           <div className="bg-white rounded-2xl border border-[#E5E7EB] p-6 shadow-sm">
             <p className="text-sm text-[#6B7280] mb-2">Total Gastos</p>
             <p className="text-3xl font-bold text-[#F43F5E]">
-              -€{mockTransactions
-                .filter(t => t.type === "expense")
-                .reduce((sum, t) => sum + t.amount, 0)
-                .toFixed(2)}
+              -${totalExpenses.toFixed(2)}
             </p>
           </div>
           <div className="bg-white rounded-2xl border border-[#E5E7EB] p-6 shadow-sm">
-            <p className="text-sm text-[#6B7280] mb-2">Total Ingresos</p>
-            <p className="text-3xl font-bold text-[#10B981]">
-              +€{mockTransactions
-                .filter(t => t.type === "income")
-                .reduce((sum, t) => sum + t.amount, 0)
-                .toFixed(2)}
+            <p className="text-sm text-[#6B7280] mb-2">Transacciones</p>
+            <p className="text-3xl font-bold text-[#4F46E5]">
+              {transactions.length}
             </p>
           </div>
         </div>

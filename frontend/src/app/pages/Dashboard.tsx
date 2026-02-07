@@ -1,63 +1,67 @@
 import { useState } from "react";
 import { Link } from "react-router";
-import { 
-  Radio, 
-  Coffee, 
-  ShoppingBag, 
-  Home, 
-  Car, 
+import {
+  Coffee,
+  ShoppingBag,
+  Home,
+  Car,
   Utensils,
   Smartphone,
   Heart,
   Plus,
-  BarChart3,
   TrendingUp,
-  TrendingDown,
   Zap,
   Calendar,
-  Clock
+  Clock,
+  Plane,
+  Film,
+  Circle,
+  Loader2
 } from "lucide-react";
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { AddTransactionDrawer } from "../components/AddTransactionDrawer";
-
-const cashFlowData = [
-  { day: "Lun", gastos: 45, presupuesto: 60 },
-  { day: "Mar", gastos: 52, presupuesto: 60 },
-  { day: "Mié", gastos: 38, presupuesto: 60 },
-  { day: "Jue", gastos: 65, presupuesto: 60 },
-  { day: "Vie", gastos: 48, presupuesto: 60 },
-  { day: "Sáb", gastos: 72, presupuesto: 80 },
-  { day: "Dom", gastos: 55, presupuesto: 80 },
-];
-
-const categorySpending = [
-  { id: "food", name: "Alimentación", amount: 285.40, percentage: 32, icon: "utensils", color: "#EF4444" },
-  { id: "transport", name: "Transporte", amount: 156.20, percentage: 18, icon: "car", color: "#3B82F6" },
-  { id: "shopping", name: "Compras", amount: 198.50, percentage: 22, icon: "shopping", color: "#8B5CF6" },
-  { id: "home", name: "Hogar", amount: 124.80, percentage: 14, icon: "home", color: "#06B6D4" },
-  { id: "coffee", name: "Café", amount: 45.30, percentage: 5, icon: "coffee", color: "#F59E0B" },
-  { id: "entertainment", name: "Ocio", amount: 78.90, percentage: 9, icon: "smartphone", color: "#10B981" },
-];
+import { useAuth } from "../contexts/AuthContext";
+import { useTransactions, useCategorySpending, useWeeklyCashFlow } from "../hooks/useData";
 
 const getIcon = (iconName: string) => {
   const icons: Record<string, any> = {
     coffee: Coffee,
-    shopping: ShoppingBag,
+    "shopping-bag": ShoppingBag,
     car: Car,
     utensils: Utensils,
-    phone: Smartphone,
+    smartphone: Smartphone,
     home: Home,
-    health: Heart,
+    heart: Heart,
+    plane: Plane,
+    film: Film,
+    circle: Circle,
   };
-  return icons[iconName] || Coffee;
+  return icons[iconName] || Circle;
 };
 
 export function Dashboard() {
+  const { profile } = useAuth();
+  const { transactions, loading: transactionsLoading } = useTransactions();
+  const { categorySpending } = useCategorySpending();
+  const { cashFlowData } = useWeeklyCashFlow();
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
-  
-  const availableToday = 1847.50;
-  const projectedEndMonth = 2345.80;
-  const potentialSavings = 423.60;
+
+  // Calculate metrics from real data
+  const totalSpentThisMonth = transactions.reduce((sum, t) => sum + t.amount_original, 0);
+  const availableToday = 2000 - (totalSpentThisMonth * 0.1); // Simplified calculation
+  const projectedEndMonth = totalSpentThisMonth * 1.5;
+  const potentialSavings = totalSpentThisMonth * 0.15;
+
+  if (transactionsLoading) {
+    return (
+      <div className="min-h-screen bg-[#F9FAFB] flex items-center justify-center">
+        <div className="text-center">
+          <Loader2 className="w-8 h-8 animate-spin text-[#4F46E5] mx-auto mb-4" />
+          <p className="text-[#6B7280]">Cargando datos...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-[#F9FAFB]">
@@ -65,7 +69,7 @@ export function Dashboard() {
       <main className="max-w-7xl mx-auto px-8 py-8">
         {/* Welcome Section */}
         <div className="mb-8">
-          <h2 className="text-3xl font-bold text-[#09090b] mb-2">Bienvenido, Santi</h2>
+          <h2 className="text-3xl font-bold text-[#09090b] mb-2">Bienvenido, {profile?.name || 'Usuario'}</h2>
           <p className="text-base text-[#6B7280]">Aquí tienes tu panorama financiero de la semana</p>
         </div>
 
@@ -92,30 +96,30 @@ export function Dashboard() {
               <AreaChart data={cashFlowData}>
                 <defs>
                   <linearGradient id="colorGastos" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#F43F5E" stopOpacity={0.15}/>
-                    <stop offset="95%" stopColor="#F43F5E" stopOpacity={0}/>
+                    <stop offset="5%" stopColor="#F43F5E" stopOpacity={0.15} />
+                    <stop offset="95%" stopColor="#F43F5E" stopOpacity={0} />
                   </linearGradient>
                   <linearGradient id="colorPresupuesto" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#4F46E5" stopOpacity={0.15}/>
-                    <stop offset="95%" stopColor="#4F46E5" stopOpacity={0}/>
+                    <stop offset="5%" stopColor="#4F46E5" stopOpacity={0.15} />
+                    <stop offset="95%" stopColor="#4F46E5" stopOpacity={0} />
                   </linearGradient>
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" vertical={false} />
-                <XAxis 
-                  dataKey="day" 
+                <XAxis
+                  dataKey="day"
                   stroke="#9CA3AF"
                   style={{ fontSize: '13px' }}
                   axisLine={false}
                   tickLine={false}
                 />
-                <YAxis 
+                <YAxis
                   stroke="#9CA3AF"
                   style={{ fontSize: '13px' }}
                   axisLine={false}
                   tickLine={false}
                 />
-                <Tooltip 
-                  contentStyle={{ 
+                <Tooltip
+                  contentStyle={{
                     backgroundColor: '#FFFFFF',
                     border: '1px solid #E5E7EB',
                     borderRadius: '12px',
@@ -124,19 +128,19 @@ export function Dashboard() {
                   }}
                   labelStyle={{ fontWeight: 600, color: '#09090b', marginBottom: '4px' }}
                 />
-                <Area 
-                  type="monotone" 
-                  dataKey="presupuesto" 
-                  stroke="#4F46E5" 
+                <Area
+                  type="monotone"
+                  dataKey="presupuesto"
+                  stroke="#4F46E5"
                   strokeWidth={2}
-                  fill="url(#colorPresupuesto)" 
+                  fill="url(#colorPresupuesto)"
                 />
-                <Area 
-                  type="monotone" 
-                  dataKey="gastos" 
-                  stroke="#F43F5E" 
+                <Area
+                  type="monotone"
+                  dataKey="gastos"
+                  stroke="#F43F5E"
                   strokeWidth={2}
-                  fill="url(#colorGastos)" 
+                  fill="url(#colorGastos)"
                 />
               </AreaChart>
             </ResponsiveContainer>
@@ -156,7 +160,7 @@ export function Dashboard() {
               </span>
             </div>
             <p className="text-sm text-[#6B7280] mb-2">Disponible hoy</p>
-            <p className="text-4xl font-bold text-[#09090b]">€{availableToday.toFixed(2)}</p>
+            <p className="text-4xl font-bold text-[#09090b]">${availableToday.toFixed(2)}</p>
             <div className="mt-4 flex items-center gap-1 text-sm text-[#10B981]">
               <TrendingUp className="w-4 h-4" />
               <span>+12.5% vs semana pasada</span>
@@ -174,7 +178,7 @@ export function Dashboard() {
               </span>
             </div>
             <p className="text-sm text-[#6B7280] mb-2">Gasto proyectado fin de mes</p>
-            <p className="text-4xl font-bold text-[#09090b]">€{projectedEndMonth.toFixed(2)}</p>
+            <p className="text-4xl font-bold text-[#09090b]">${projectedEndMonth.toFixed(2)}</p>
             <div className="mt-4 flex items-center gap-1 text-sm text-[#6B7280]">
               <span>Quedan 22 días</span>
             </div>
@@ -191,7 +195,7 @@ export function Dashboard() {
               </span>
             </div>
             <p className="text-sm text-[#6B7280] mb-2">Ahorro potencial</p>
-            <p className="text-4xl font-bold text-[#09090b]">€{potentialSavings.toFixed(2)}</p>
+            <p className="text-4xl font-bold text-[#09090b]">${potentialSavings.toFixed(2)}</p>
             <div className="mt-4 flex items-center gap-1 text-sm text-[#6B7280]">
               <span>Con pequeños ajustes</span>
             </div>
@@ -207,64 +211,70 @@ export function Dashboard() {
             </div>
           </div>
 
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-            {categorySpending.map((category) => {
-              const IconComponent = getIcon(category.icon);
-              return (
-                <div 
-                  key={category.id}
-                  className="bg-white rounded-2xl border border-[#E5E7EB] p-5 shadow-sm hover:shadow-md transition-all cursor-pointer group"
-                >
-                  <div className="flex flex-col items-center text-center">
-                    {/* Icon with colored background */}
-                    <div 
-                      className="w-14 h-14 rounded-2xl flex items-center justify-center mb-3 group-hover:scale-110 transition-transform"
-                      style={{ backgroundColor: `${category.color}15` }}
-                    >
-                      <IconComponent 
-                        className="w-7 h-7" 
-                        style={{ color: category.color }}
-                      />
+          {categorySpending.length === 0 ? (
+            <div className="bg-white rounded-2xl border border-[#E5E7EB] p-12 text-center">
+              <p className="text-[#6B7280]">No hay gastos registrados aún</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+              {categorySpending.map((category) => {
+                const IconComponent = getIcon(category.icon);
+                return (
+                  <div
+                    key={category.id}
+                    className="bg-white rounded-2xl border border-[#E5E7EB] p-5 shadow-sm hover:shadow-md transition-all cursor-pointer group"
+                  >
+                    <div className="flex flex-col items-center text-center">
+                      {/* Icon with colored background */}
+                      <div
+                        className="w-14 h-14 rounded-2xl flex items-center justify-center mb-3 group-hover:scale-110 transition-transform"
+                        style={{ backgroundColor: `${category.color}15` }}
+                      >
+                        <IconComponent
+                          className="w-7 h-7"
+                          style={{ color: category.color }}
+                        />
+                      </div>
+
+                      {/* Category name */}
+                      <p className="text-xs text-[#6B7280] mb-2">{category.name}</p>
+
+                      {/* Amount - Large and prominent */}
+                      <p className="text-xl font-bold text-[#09090b] mb-1">
+                        ${category.amount.toFixed(0)}
+                      </p>
+
+                      {/* Percentage */}
+                      <div className="w-full bg-[#F3F4F6] rounded-full h-1.5 mb-2">
+                        <div
+                          className="h-1.5 rounded-full transition-all"
+                          style={{
+                            width: `${category.percentage}%`,
+                            backgroundColor: category.color
+                          }}
+                        />
+                      </div>
+                      <p className="text-xs font-medium" style={{ color: category.color }}>
+                        {category.percentage}%
+                      </p>
                     </div>
-                    
-                    {/* Category name */}
-                    <p className="text-xs text-[#6B7280] mb-2">{category.name}</p>
-                    
-                    {/* Amount - Large and prominent */}
-                    <p className="text-xl font-bold text-[#09090b] mb-1">
-                      €{category.amount.toFixed(0)}
-                    </p>
-                    
-                    {/* Percentage */}
-                    <div className="w-full bg-[#F3F4F6] rounded-full h-1.5 mb-2">
-                      <div 
-                        className="h-1.5 rounded-full transition-all"
-                        style={{ 
-                          width: `${category.percentage}%`,
-                          backgroundColor: category.color
-                        }}
-                      />
-                    </div>
-                    <p className="text-xs font-medium" style={{ color: category.color }}>
-                      {category.percentage}%
-                    </p>
                   </div>
-                </div>
-              );
-            })}
-          </div>
+                );
+              })}
+            </div>
+          )}
         </div>
 
         {/* Quick Actions */}
         <div className="flex items-center gap-4">
-          <button 
+          <button
             onClick={() => setIsDrawerOpen(true)}
             className="flex-1 bg-[#4F46E5] text-white rounded-2xl px-6 py-4 shadow-sm hover:bg-[#4338CA] hover:shadow-md transition-all flex items-center justify-center gap-2"
           >
             <Plus className="w-5 h-5" />
             <span className="font-semibold">Añadir gasto</span>
           </button>
-          <Link 
+          <Link
             to="/history"
             className="px-6 py-4 bg-white border border-[#E5E7EB] text-[#09090b] rounded-2xl shadow-sm hover:bg-[#F9FAFB] hover:shadow-md transition-all flex items-center justify-center gap-2"
           >
@@ -275,9 +285,9 @@ export function Dashboard() {
       </main>
 
       {/* Add Transaction Drawer */}
-      <AddTransactionDrawer 
-        isOpen={isDrawerOpen} 
-        onClose={() => setIsDrawerOpen(false)} 
+      <AddTransactionDrawer
+        isOpen={isDrawerOpen}
+        onClose={() => setIsDrawerOpen(false)}
       />
     </div>
   );

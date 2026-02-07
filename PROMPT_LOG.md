@@ -12,6 +12,58 @@ It excludes troubleshooting steps and minor confirmations.
 | 2026-02-07 | Design/Figma | Sprint 1-4 Figma Prompts for Dashboard, Transactions, Categories, and Chat Sandbox |
 | 2026-02-07 | Frontend/Auth | Login + Auth Logic Prompt for Supabase and Protected Routes |
 | 2026-02-07 | Frontend/WhatsApp | WhatsApp Linkage Flow in Settings Page |
+| 2026-02-07 | Frontend/Supabase | Connect Frontend to Real Database (AuthContext, useData hooks, Dashboard/History) |
+| 2026-02-07 | Backend/Fix | Fix Supabase Auth 500 (malformed users) and Invalid Credentials (bcrypt) |
+
+## Frontend - Connect to Real Database (2026-02-07)
+
+**Contexto y Objetivo:**
+> "Conecta el frontend de SmartSpend a la base de datos real de Supabase. Elimina los datos mock y usa hooks reales para obtener transacciones, categorías y flujo de caja. Asegura que AuthContext maneje la sesión real y redirija según el rol del perfil."
+
+**Tareas técnicas realizadas:**
+- Refactorización de `AuthContext.tsx` para usar `signInWithPassword` de Supabase.
+- Creación de `useData.ts` con hooks personalizados (`useTransactions`, `useCategories`, `useCashFlow`).
+- Actualización de `Dashboard.tsx` y `History.tsx` para consumir datos reales.
+- Integración de `Settings.tsx` para persistir cambios de perfil.
+
+## Backend - Auth Fixes (2026-02-07)
+
+**Contexto y Objetivo:**
+> "Resolver el error 500 en el login de Supabase y corregir las credenciales inválidas para los usuarios de prueba."
+
+**Correcciones aplicadas:**
+- **Error 500:** Se identificó que los registros manuales en `auth.users` carecían de campos obligatorios como `confirmation_token` y `email_change`. Se recrearon los usuarios correctamente.
+- **Credenciales:** Se generaron nuevos hashes bcrypt compatibles con las rondas de Supabase (uso de `pgcrypto` interno) para las contraseñas `santi123` y `carla123`.
+
+## Sprint 1 - Infraestructura de Datos SmartSpend (2026-02-07)
+
+**Contexto y Objetivo:**
+> "Actúa como un Senior Database Architect. Basándote en el archivo `supabaseblueprint.md` y analizando el código frontend disponible en este proyecto, genera el esquema SQL completo para el backend de SmartSpend en Supabase. El objetivo es crear una estructura que soporte tanto la operación del usuario (Santi) como la analítica B2B (Carla)."
+
+**1. Definición de Entidades y Tipos de Datos:**
+
+- **Tabla profiles:** Crea esta tabla extendiendo auth.users. Debe incluir: id (primary key), full_name, role (un tipo ENUM con valores 'user' y 'admin_b2b'), home_currency (default 'USD'), bot_user_id (text, único), pairing_code (text, para vinculación), zip_code (text) y age_cohort (text).
+
+- **Tabla categories:** Debe soportar categorías globales y personalizadas. Incluye: id (uuid), user_id (uuid, nullable para categorías del sistema), name, icon (para Lucide) y keywords (text array).
+
+- **Tabla transactions:** Es la tabla crítica. Debe incluir: id, user_id (fk profiles), raw_text (el mensaje original del bot), amount_original (numeric), currency_original (text), amount_base (numeric), amount_usd (numeric para normalización B2B), category_id (fk categories), merchant_name e is_ai_confirmed (boolean).
+
+- **Tabla exchange_rates:** Estructura de caché para divisas con base_currency, rates (jsonb) y updated_at.
+
+**2. Automatización con Triggers:**
+
+- Genera una función de Postgres y un Trigger llamado `on_auth_user_created` que se dispare al registrarse un usuario en auth.users.
+- La función debe insertar automáticamente una fila en public.profiles usando el id y full_name (si está disponible en metadata) del nuevo usuario, asignando el rol 'user' por defecto.
+
+**3. Consistencia con el Frontend:**
+
+- Analiza los componentes de visualización en el código para asegurar que los nombres de las columnas en SQL coincidan con las interfaces de TypeScript o props de React que ya existen (ej: camelCase vs snake_case).
+
+**4. Entorno y Herramientas:**
+
+- No actives RLS todavía (se hará en el Sprint 2).
+- Usa el MCP de Supabase para la ejecución.
+- Configura un archivo .env inicial con las placeholders para SUPABASE_URL y SUPABASE_SERVICE_ROLE_KEY.
 
 ## Ideation Prompt (2026-02-06)
 
