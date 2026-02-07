@@ -9,6 +9,8 @@ It excludes troubleshooting steps and minor confirmations.
 |------|----------|-------------------|
 | 2026-02-06 | Infrastructure | Setup NotebookLM MCP connection (Install, Config, Auth, Verify) |
 | 2026-02-06 | Infrastructure | Retry NotebookLM MCP setup: Use uv/pip, locate config, auth, verify |
+| 2026-02-07 | Design/Figma | Sprint 1-4 Figma Prompts for Dashboard, Transactions, Categories, and Chat Sandbox |
+| 2026-02-07 | Frontend/Auth | Login + Auth Logic Prompt for Supabase and Protected Routes |
 
 ## Ideation Prompt (2026-02-06)
 
@@ -238,3 +240,99 @@ Validar si el registro en <3 segundos mediante texto/voz aumenta la frecuencia d
 *   **Legibilidad:** En condiciones de mucha luz (en la calle pagando un café), el modo claro es mucho más legible que el oscuro.
 *   **Psicología del Color:** El blanco y el azul índigo se asocian con la banca moderna y la tecnología segura.
 *   **Foco en la Data:** Al no tener un fondo negro que "pesa", los números y los gráficos de colores resaltan mucho más, facilitando la toma de decisiones para "Carla".
+
+## Sprint 1: El Dashboard Analítico (2026-02-07)
+
+**Prompt para Figma:**
+
+"Diseña una pantalla de Dashboard Principal de alta fidelidad en Light Mode. El foco no es la entrada de datos, sino el Insight.
+
+Hero Section: Un gráfico de área suave que muestre el 'Flujo de Caja Semanal' (Gastos vs Presupuesto).
+
+Metric Grid: 3 tarjetas limpias con: 'Disponible hoy', 'Gasto proyectado a fin de mes' y 'Ahorro potencial'.
+
+Sección de Categorías: Una cuadrícula de burbujas o tarjetas pequeñas que muestren el gasto por categoría con iconos minimalistas.
+
+Estilo: Usa sombras muy sutiles, bordes redondeados (16px) y una paleta de Indigo y Gris suave. La jerarquía debe priorizar los números grandes y claros."
+
+## Sprint 2: Gestión de Transacciones y Edición (2026-02-07)
+
+**Prompt para Figma:**
+
+"Diseña una vista de Historial de Transacciones y un Modal de Edición.
+
+Lista de Actividad: Cada fila debe mostrar: Logo del comercio (o inicial), categoría, monto y el texto original que Santi envió al bot (ej: '20 en cafe').
+
+Interacción: Al hacer clic en una fila, se abre un 'Slide-over' (panel lateral) o Modal.
+
+Formulario de Edición: Campos ultra-simples para cambiar el Monto, la Categoría (usando un selector de iconos rápido) y la fecha.
+
+Feedback Visual: Un botón prominente de 'Guardar Cambios' y una opción de 'Eliminar'. Todo con estética minimalista y limpia."
+
+## Sprint 3: Personalización de Categorías (2026-02-07)
+
+**Prompt para Figma:**
+
+"Diseña una pantalla de Configuración de Categorías.
+
+Lista de Categorías Actuales: Mostrar iconos y nombres. Añadir un 'drag-and-drop' visual para reordenar importancia.
+
+Acción de Agregar: Un botón simple '+' que abra un input para nombre y un selector de biblioteca de iconos (Lucide o Phosphor icons).
+
+Lógica de IA: Junto a cada categoría, incluye un pequeño texto que diga: 'Palabras clave asociadas' (ej: para 'Comida' -> 'restaurante, cena, lunch').
+
+UI: Mantén el blanco predominante, tipografía Inter, y usa colores pastel muy suaves para diferenciar las categorías."
+
+## Sprint 4: Sandbox de Chat (2026-02-07)
+
+**Prompt para Figma:**
+
+"Diseña un Componente de Chat Integrado (Floating o Sidebar) dentro del dashboard para simular registros.
+
+Interfaz: Estilo burbujas de chat limpias (tipo iMessage o WhatsApp Business).
+
+Flujo de Simulación: Muestra una burbuja de Santi diciendo: 'Gasté 50 en el super' y la respuesta inmediata del bot: '✅ Registrado: $50 en Supermercado. Ver en dashboard'.
+
+Input: Un campo de texto en la parte inferior con un icono de micrófono (para simular notas de voz) y un botón de enviar.
+
+Contexto: Ubícalo en la esquina inferior derecha del Dashboard como un 'Widget de Prueba', permitiendo que el usuario vea cómo el gráfico del Dashboard se actualiza en tiempo real al enviar el mensaje."
+
+## Frontend (Login + Auth Logic) (2026-02-07)
+
+**Prompt para el Frontend:**
+
+"Rol: Senior Web Architect especializado en Supabase Auth y Next.js. Tarea: Crear una página de Login y un sistema de rutas protegidas basado en roles para SmartSpend.
+
+1. UI de la Página de Login:
+
+Estilo: Light Mode, minimalista (estilo Apple/Stripe). Fondo blanco puro, campos con bordes finos.
+
+Componentes: Formulario de email y contraseña, botón de "Entrar" en Indigo-600, y opción de "Olvidé mi contraseña".
+
+UX: Mensajes de error claros (Toast notifications) si las credenciales son inválidas.
+
+2. Lógica de Autenticación (Supabase):
+
+Al iniciar sesión, el sistema debe consultar la tabla profiles buscando el campo role.
+
+Redirección Inteligente: > * Si role === 'user', redirigir a /dashboard.
+
+Si role === 'admin_b2b', redirigir a /admin/analytics.
+
+Middleware de Seguridad: Si un 'user' intenta entrar manualmente a una URL de /admin, debe ser rebotado automáticamente al dashboard personal.
+
+3. Componentes de UI por Rol:
+
+Crea un componente Sidebar que oculte o muestre pestañas según el rol:
+
+Pestaña "Mis Gastos" y "Chat" solo para user.
+
+Pestaña "Market Insights" y "Global Data" solo para admin_b2b.
+
+4. Mock Data para Testing:
+
+Configura dos usuarios de prueba en el código:
+
+santi@test.com (role: user)
+
+carla@test.com (role: admin_b2b)"

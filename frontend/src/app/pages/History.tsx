@@ -171,29 +171,14 @@ export function History() {
 
   return (
     <div className="min-h-screen bg-[#F9FAFB]">
-      {/* Header */}
-      <header className="bg-white border-b border-[#E5E7EB] sticky top-0 z-10">
-        <div className="max-w-5xl mx-auto px-8 py-4">
-          <div className="flex items-center gap-4 mb-4">
-            <Link 
-              to="/"
-              className="flex items-center gap-2 text-[#6B7280] hover:text-[#09090b] transition-colors"
-            >
-              <ArrowLeft className="w-5 h-5" />
-              <span className="text-sm font-medium">Volver</span>
-            </Link>
-          </div>
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-2xl font-bold text-[#09090b] mb-1">Historial de Transacciones</h1>
-              <p className="text-sm text-[#6B7280]">Revisa y edita tus movimientos</p>
-            </div>
-          </div>
-        </div>
-      </header>
-
       {/* Main Content */}
       <main className="max-w-5xl mx-auto px-8 py-8">
+        {/* Page Title */}
+        <div className="mb-6">
+          <h1 className="text-2xl font-bold text-[#09090b] mb-1">Historial de Transacciones</h1>
+          <p className="text-sm text-[#6B7280]">Revisa y edita tus movimientos</p>
+        </div>
+
         {/* Search and Filter Bar */}
         <div className="mb-6 flex items-center gap-4">
           <div className="flex-1 relative">

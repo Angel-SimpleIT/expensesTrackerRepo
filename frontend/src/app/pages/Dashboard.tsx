@@ -61,34 +61,6 @@ export function Dashboard() {
 
   return (
     <div className="min-h-screen bg-[#F9FAFB]">
-      {/* Header */}
-      <header className="bg-white border-b border-[#E5E7EB] sticky top-0 z-10">
-        <div className="max-w-7xl mx-auto px-8 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 bg-[#4F46E5] rounded-xl flex items-center justify-center">
-                <span className="text-white font-semibold text-sm">S</span>
-              </div>
-              <h1 className="text-lg font-semibold text-[#09090b]">SmartSpend</h1>
-            </div>
-          </div>
-          <div className="flex items-center gap-4">
-            <div className="flex items-center gap-2 px-3 py-2 bg-[#F9FAFB] rounded-lg">
-              <Radio className="w-4 h-4 text-[#4F46E5]" />
-              <span className="text-sm text-[#6B7280]">Bot activo</span>
-              <span className="w-2 h-2 bg-[#10B981] rounded-full animate-pulse" />
-            </div>
-            <Link 
-              to="/analytics"
-              className="flex items-center gap-2 px-4 py-2 text-sm text-[#6B7280] hover:text-[#09090b] transition-colors"
-            >
-              <BarChart3 className="w-4 h-4" />
-              <span>Admin</span>
-            </Link>
-          </div>
-        </div>
-      </header>
-
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-8 py-8">
         {/* Welcome Section */}

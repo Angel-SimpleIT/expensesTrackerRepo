@@ -38,258 +38,210 @@ const recentUsers = [
 
 export function Analytics() {
   return (
-    <div className="min-h-screen bg-[#F9FAFB] flex">
-      {/* Sidebar */}
-      <aside className="w-64 bg-[#F3F4F6] border-r border-[#E5E7EB] flex-shrink-0">
-        <div className="p-6">
-          <div className="flex items-center gap-2 mb-8">
-            <div className="w-8 h-8 bg-[#4F46E5] rounded-lg flex items-center justify-center">
-              <span className="text-white font-semibold text-sm">S</span>
-            </div>
-            <h1 className="text-lg font-semibold text-[#09090b]">SmartSpend</h1>
-          </div>
-
-          <nav className="space-y-2">
-            <Link
-              to="/"
-              className="flex items-center gap-3 px-4 py-3 text-sm text-[#6B7280] hover:text-[#09090b] hover:bg-white rounded-lg transition-colors"
-            >
-              <ArrowLeft className="w-4 h-4" />
-              <span>Volver a Usuario</span>
-            </Link>
-            <button className="w-full flex items-center gap-3 px-4 py-3 text-sm text-white bg-[#4F46E5] rounded-lg">
-              <TrendingUp className="w-4 h-4" />
-              <span>Analytics</span>
-            </button>
-            <button className="w-full flex items-center gap-3 px-4 py-3 text-sm text-[#6B7280] hover:text-[#09090b] hover:bg-white rounded-lg transition-colors">
-              <Users className="w-4 h-4" />
-              <span>Usuarios</span>
-            </button>
-            <button className="w-full flex items-center gap-3 px-4 py-3 text-sm text-[#6B7280] hover:text-[#09090b] hover:bg-white rounded-lg transition-colors">
-              <Shield className="w-4 h-4" />
-              <span>Seguridad</span>
-            </button>
-          </nav>
-        </div>
-
-        <div className="absolute bottom-0 w-64 p-6 border-t border-[#E5E7EB]">
-          <div className="flex items-center gap-3 px-4 py-3 bg-white rounded-lg">
-            <div className="w-8 h-8 bg-[#4F46E5] rounded-full flex items-center justify-center">
-              <span className="text-white text-sm font-medium">C</span>
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-[#09090b]">Carla</p>
-              <p className="text-xs text-[#6B7280]">Admin</p>
-            </div>
-          </div>
-        </div>
-      </aside>
-
+    <div className="min-h-screen bg-[#F9FAFB]">
       {/* Main Content */}
-      <main className="flex-1 overflow-auto">
-        <div className="max-w-7xl mx-auto px-8 py-8">
-          {/* Header */}
-          <div className="mb-8 flex items-center justify-between">
-            <div>
-              <h2 className="text-2xl font-bold text-[#09090b] mb-2">Dashboard B2B</h2>
-              <p className="text-sm text-[#6B7280]">Vista general de análisis empresarial</p>
+      <main className="max-w-7xl mx-auto px-8 py-8">
+        {/* Header */}
+        <div className="mb-8 flex items-center justify-between">
+          <div>
+            <h2 className="text-2xl font-bold text-[#09090b] mb-2">Dashboard B2B</h2>
+            <p className="text-sm text-[#6B7280]">Vista general de análisis empresarial</p>
+          </div>
+          <div className="flex items-center gap-3">
+            <button className="flex items-center gap-2 px-4 py-2 text-sm text-[#6B7280] bg-white border border-[#E5E7EB] rounded-lg hover:bg-[#F9FAFB] transition-colors">
+              <Calendar className="w-4 h-4" />
+              <span>Últimos 30 días</span>
+              <ChevronDown className="w-4 h-4" />
+            </button>
+            <button className="flex items-center gap-2 px-4 py-2 text-sm text-white bg-[#4F46E5] rounded-lg hover:bg-[#4338CA] transition-colors">
+              <Download className="w-4 h-4" />
+              <span>Exportar</span>
+            </button>
+          </div>
+        </div>
+
+        {/* Stats Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+          <div className="bg-white rounded-2xl border border-[#E5E7EB] p-6 shadow-sm">
+            <div className="flex items-center justify-between mb-4">
+              <div className="w-10 h-10 rounded-lg bg-[#4F46E5]/10 flex items-center justify-center">
+                <Users className="w-5 h-5 text-[#4F46E5]" />
+              </div>
+              <span className="text-xs font-medium text-[#10B981] bg-[#10B981]/10 px-2 py-1 rounded-full">
+                +12.5%
+              </span>
             </div>
-            <div className="flex items-center gap-3">
-              <button className="flex items-center gap-2 px-4 py-2 text-sm text-[#6B7280] bg-white border border-[#E5E7EB] rounded-lg hover:bg-[#F9FAFB] transition-colors">
-                <Calendar className="w-4 h-4" />
-                <span>Últimos 30 días</span>
-                <ChevronDown className="w-4 h-4" />
-              </button>
-              <button className="flex items-center gap-2 px-4 py-2 text-sm text-white bg-[#4F46E5] rounded-lg hover:bg-[#4338CA] transition-colors">
-                <Download className="w-4 h-4" />
-                <span>Exportar</span>
-              </button>
-            </div>
+            <p className="text-sm text-[#6B7280] mb-1">Usuarios Activos</p>
+            <p className="text-3xl font-bold text-[#09090b]">2,847</p>
           </div>
 
-          {/* Stats Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-            <div className="bg-white rounded-2xl border border-[#E5E7EB] p-6 shadow-sm">
-              <div className="flex items-center justify-between mb-4">
-                <div className="w-10 h-10 rounded-lg bg-[#4F46E5]/10 flex items-center justify-center">
-                  <Users className="w-5 h-5 text-[#4F46E5]" />
-                </div>
-                <span className="text-xs font-medium text-[#10B981] bg-[#10B981]/10 px-2 py-1 rounded-full">
-                  +12.5%
-                </span>
+          <div className="bg-white rounded-2xl border border-[#E5E7EB] p-6 shadow-sm">
+            <div className="flex items-center justify-between mb-4">
+              <div className="w-10 h-10 rounded-lg bg-[#10B981]/10 flex items-center justify-center">
+                <TrendingUp className="w-5 h-5 text-[#10B981]" />
               </div>
-              <p className="text-sm text-[#6B7280] mb-1">Usuarios Activos</p>
-              <p className="text-3xl font-bold text-[#09090b]">2,847</p>
+              <span className="text-xs font-medium text-[#10B981] bg-[#10B981]/10 px-2 py-1 rounded-full">
+                +8.2%
+              </span>
             </div>
-
-            <div className="bg-white rounded-2xl border border-[#E5E7EB] p-6 shadow-sm">
-              <div className="flex items-center justify-between mb-4">
-                <div className="w-10 h-10 rounded-lg bg-[#10B981]/10 flex items-center justify-center">
-                  <TrendingUp className="w-5 h-5 text-[#10B981]" />
-                </div>
-                <span className="text-xs font-medium text-[#10B981] bg-[#10B981]/10 px-2 py-1 rounded-full">
-                  +8.2%
-                </span>
-              </div>
-              <p className="text-sm text-[#6B7280] mb-1">Transacciones</p>
-              <p className="text-3xl font-bold text-[#09090b]">45.2K</p>
-            </div>
-
-            <div className="bg-white rounded-2xl border border-[#E5E7EB] p-6 shadow-sm">
-              <div className="flex items-center justify-between mb-4">
-                <div className="w-10 h-10 rounded-lg bg-[#F59E0B]/10 flex items-center justify-center">
-                  <DollarSign className="w-5 h-5 text-[#F59E0B]" />
-                </div>
-                <span className="text-xs font-medium text-[#10B981] bg-[#10B981]/10 px-2 py-1 rounded-full">
-                  +15.3%
-                </span>
-              </div>
-              <p className="text-sm text-[#6B7280] mb-1">Volumen Total</p>
-              <p className="text-3xl font-bold text-[#09090b]">€289K</p>
-            </div>
+            <p className="text-sm text-[#6B7280] mb-1">Transacciones</p>
+            <p className="text-3xl font-bold text-[#09090b]">45.2K</p>
           </div>
 
-          {/* Charts Row */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-            {/* Spending Trend Chart */}
-            <div className="bg-white rounded-2xl border border-[#E5E7EB] p-6 shadow-sm">
-              <div className="flex items-center justify-between mb-6">
-                <div>
-                  <h3 className="text-lg font-semibold text-[#09090b] mb-1">Tendencia de Gastos</h3>
-                  <p className="text-sm text-[#6B7280]">Últimos 6 meses</p>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Shield className="w-4 h-4 text-[#6B7280]" />
-                  <span className="text-xs text-[#6B7280]">Datos anonimizados</span>
-                </div>
+          <div className="bg-white rounded-2xl border border-[#E5E7EB] p-6 shadow-sm">
+            <div className="flex items-center justify-between mb-4">
+              <div className="w-10 h-10 rounded-lg bg-[#F59E0B]/10 flex items-center justify-center">
+                <DollarSign className="w-5 h-5 text-[#F59E0B]" />
               </div>
-              <ResponsiveContainer width="100%" height={250}>
-                <AreaChart data={spendingData}>
-                  <defs>
-                    <linearGradient id="colorValue" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#4F46E5" stopOpacity={0.1}/>
-                      <stop offset="95%" stopColor="#4F46E5" stopOpacity={0}/>
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
-                  <XAxis 
-                    dataKey="month" 
-                    stroke="#6B7280"
-                    style={{ fontSize: '12px' }}
-                  />
-                  <YAxis 
-                    stroke="#6B7280"
-                    style={{ fontSize: '12px' }}
-                  />
-                  <Tooltip 
-                    contentStyle={{ 
-                      backgroundColor: '#FFFFFF',
-                      border: '1px solid #E5E7EB',
-                      borderRadius: '8px',
-                      boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)'
-                    }}
-                  />
-                  <Area 
-                    type="monotone" 
-                    dataKey="value" 
-                    stroke="#4F46E5" 
-                    strokeWidth={2}
-                    fill="url(#colorValue)" 
-                  />
-                </AreaChart>
-              </ResponsiveContainer>
+              <span className="text-xs font-medium text-[#10B981] bg-[#10B981]/10 px-2 py-1 rounded-full">
+                +15.3%
+              </span>
             </div>
+            <p className="text-sm text-[#6B7280] mb-1">Volumen Total</p>
+            <p className="text-3xl font-bold text-[#09090b]">€289K</p>
+          </div>
+        </div>
 
-            {/* Category Distribution */}
-            <div className="bg-white rounded-2xl border border-[#E5E7EB] p-6 shadow-sm">
-              <h3 className="text-lg font-semibold text-[#09090b] mb-1">Categorías Principales</h3>
-              <p className="text-sm text-[#6B7280] mb-6">Distribución por categoría</p>
-              <ResponsiveContainer width="100%" height={250}>
-                <BarChart data={categoryData}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
-                  <XAxis 
-                    dataKey="category" 
-                    stroke="#6B7280"
-                    style={{ fontSize: '11px' }}
-                  />
-                  <YAxis 
-                    stroke="#6B7280"
-                    style={{ fontSize: '12px' }}
-                  />
-                  <Tooltip 
-                    contentStyle={{ 
-                      backgroundColor: '#FFFFFF',
-                      border: '1px solid #E5E7EB',
-                      borderRadius: '8px',
-                      boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)'
-                    }}
-                  />
-                  <Bar dataKey="amount" fill="#4F46E5" radius={[8, 8, 0, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
+        {/* Charts Row */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+          {/* Spending Trend Chart */}
+          <div className="bg-white rounded-2xl border border-[#E5E7EB] p-6 shadow-sm">
+            <div className="flex items-center justify-between mb-6">
+              <div>
+                <h3 className="text-lg font-semibold text-[#09090b] mb-1">Tendencia de Gastos</h3>
+                <p className="text-sm text-[#6B7280]">Últimos 6 meses</p>
+              </div>
+              <div className="flex items-center gap-2">
+                <Shield className="w-4 h-4 text-[#6B7280]" />
+                <span className="text-xs text-[#6B7280]">Datos anonimizados</span>
+              </div>
             </div>
+            <ResponsiveContainer width="100%" height={250}>
+              <AreaChart data={spendingData}>
+                <defs>
+                  <linearGradient id="colorValue" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#4F46E5" stopOpacity={0.1}/>
+                    <stop offset="95%" stopColor="#4F46E5" stopOpacity={0}/>
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
+                <XAxis 
+                  dataKey="month" 
+                  stroke="#6B7280"
+                  style={{ fontSize: '12px' }}
+                />
+                <YAxis 
+                  stroke="#6B7280"
+                  style={{ fontSize: '12px' }}
+                />
+                <Tooltip 
+                  contentStyle={{ 
+                    backgroundColor: '#FFFFFF',
+                    border: '1px solid #E5E7EB',
+                    borderRadius: '8px',
+                    boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)'
+                  }}
+                />
+                <Area 
+                  type="monotone" 
+                  dataKey="value" 
+                  stroke="#4F46E5" 
+                  strokeWidth={2}
+                  fill="url(#colorValue)" 
+                />
+              </AreaChart>
+            </ResponsiveContainer>
           </div>
 
-          {/* User Activity Table */}
-          <div className="bg-white rounded-2xl border border-[#E5E7EB] shadow-sm overflow-hidden">
-            <div className="p-6 border-b border-[#E5E7EB]">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h3 className="text-lg font-semibold text-[#09090b] mb-1">Actividad de Usuarios</h3>
-                  <p className="text-sm text-[#6B7280]">Usuarios más activos del mes</p>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Shield className="w-4 h-4 text-[#6B7280]" />
-                  <span className="text-xs text-[#6B7280]">IDs anonimizados</span>
-                </div>
+          {/* Category Distribution */}
+          <div className="bg-white rounded-2xl border border-[#E5E7EB] p-6 shadow-sm">
+            <h3 className="text-lg font-semibold text-[#09090b] mb-1">Categorías Principales</h3>
+            <p className="text-sm text-[#6B7280] mb-6">Distribución por categoría</p>
+            <ResponsiveContainer width="100%" height={250}>
+              <BarChart data={categoryData}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
+                <XAxis 
+                  dataKey="category" 
+                  stroke="#6B7280"
+                  style={{ fontSize: '11px' }}
+                />
+                <YAxis 
+                  stroke="#6B7280"
+                  style={{ fontSize: '12px' }}
+                />
+                <Tooltip 
+                  contentStyle={{ 
+                    backgroundColor: '#FFFFFF',
+                    border: '1px solid #E5E7EB',
+                    borderRadius: '8px',
+                    boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)'
+                  }}
+                />
+                <Bar dataKey="amount" fill="#4F46E5" radius={[8, 8, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+
+        {/* User Activity Table */}
+        <div className="bg-white rounded-2xl border border-[#E5E7EB] shadow-sm overflow-hidden">
+          <div className="p-6 border-b border-[#E5E7EB]">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-lg font-semibold text-[#09090b] mb-1">Actividad de Usuarios</h3>
+                <p className="text-sm text-[#6B7280]">Usuarios más activos del mes</p>
+              </div>
+              <div className="flex items-center gap-2">
+                <Shield className="w-4 h-4 text-[#6B7280]" />
+                <span className="text-xs text-[#6B7280]">IDs anonimizados</span>
               </div>
             </div>
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead className="bg-[#F9FAFB]">
-                  <tr>
-                    <th className="px-6 py-4 text-left text-xs font-medium text-[#6B7280] uppercase tracking-wider">
-                      ID Usuario
-                    </th>
-                    <th className="px-6 py-4 text-left text-xs font-medium text-[#6B7280] uppercase tracking-wider">
-                      Estado
-                    </th>
-                    <th className="px-6 py-4 text-left text-xs font-medium text-[#6B7280] uppercase tracking-wider">
-                      Transacciones
-                    </th>
-                    <th className="px-6 py-4 text-left text-xs font-medium text-[#6B7280] uppercase tracking-wider">
-                      Gasto Total
-                    </th>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead className="bg-[#F9FAFB]">
+                <tr>
+                  <th className="px-6 py-4 text-left text-xs font-medium text-[#6B7280] uppercase tracking-wider">
+                    ID Usuario
+                  </th>
+                  <th className="px-6 py-4 text-left text-xs font-medium text-[#6B7280] uppercase tracking-wider">
+                    Estado
+                  </th>
+                  <th className="px-6 py-4 text-left text-xs font-medium text-[#6B7280] uppercase tracking-wider">
+                    Transacciones
+                  </th>
+                  <th className="px-6 py-4 text-left text-xs font-medium text-[#6B7280] uppercase tracking-wider">
+                    Gasto Total
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-[#E5E7EB]">
+                {recentUsers.map((user) => (
+                  <tr key={user.id} className="hover:bg-[#F9FAFB] transition-colors">
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <span className="text-sm font-medium text-[#09090b]">{user.id}</span>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <span 
+                        className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                          user.status === "active" 
+                            ? "bg-[#10B981]/10 text-[#10B981]" 
+                            : "bg-[#6B7280]/10 text-[#6B7280]"
+                        }`}
+                      >
+                        {user.status === "active" ? "Activo" : "Inactivo"}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-[#6B7280]">
+                      {user.transactions}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-[#09090b]">
+                      €{user.spending.toLocaleString()}
+                    </td>
                   </tr>
-                </thead>
-                <tbody className="divide-y divide-[#E5E7EB]">
-                  {recentUsers.map((user) => (
-                    <tr key={user.id} className="hover:bg-[#F9FAFB] transition-colors">
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className="text-sm font-medium text-[#09090b]">{user.id}</span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span 
-                          className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                            user.status === "active" 
-                              ? "bg-[#10B981]/10 text-[#10B981]" 
-                              : "bg-[#6B7280]/10 text-[#6B7280]"
-                          }`}
-                        >
-                          {user.status === "active" ? "Activo" : "Inactivo"}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-[#6B7280]">
-                        {user.transactions}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-[#09090b]">
-                        €{user.spending.toLocaleString()}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                ))}
+              </tbody>
+            </table>
           </div>
         </div>
       </main>
