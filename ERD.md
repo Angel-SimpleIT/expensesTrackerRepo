@@ -28,3 +28,6 @@ Esta estructura asegura que capturemos el contexto que las apps bancarias pierde
 * `raw_text`: El mensaje original del chat (ej. "5 euritos en café").
 * `merchant_name`: Nombre del lugar extraído por la IA.
 * `is_ai_confirmed`: Booleano (Si Santi lo editó o lo aceptó tal cual)
+
+
+1. Estrategia de Roles en SupabasePara que esto funcione "de manual", utilizaremos la tabla profiles que definimos antes. La clave está en que el frontend consulte el campo role inmediatamente después del login.RolePermisosVista InicialUser (Santi)CRUD de sus propias transacciones. Ver su dashboard personal./dashboardAdmin B2B (Carla)Ver data agregada/anonimizada. No puede ver transacciones individuales de un usuario específico./admin/analytics
