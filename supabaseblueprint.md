@@ -1,8 +1,6 @@
 # BLUEPRINT: SMARTSPEND (SUPABASE BaaS)
 
-Eres un desarrollador fullstack senior. Debes implementar el backend para el MVP de SmartSpend, priorizando la reducción de fricción en el registro y la integridad de datos anonimizados.
-
-## 1. Esquema de Datos (Estructura de "Datos Enriquecidos")
+# 1. Esquema de Datos (Estructura de "Datos Enriquecidos")
 
 * **profiles**: `id` (uuid, fk auth.users), `full_name`, `role` (user/admin_b2b), `home_currency`, `bot_user_id` (ID de WhatsApp), `pairing_code` (6 dígitos), `zip_code` (5 dígitos), `age_cohort` (rango edad).
 * **categories**: `id`, `user_id` (uuid, opcional para personalizadas), `name`, `icon` (lucide-name), `keywords` (text[] para entrenamiento IA).
