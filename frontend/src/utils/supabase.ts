@@ -13,6 +13,7 @@ export interface Profile {
   role: UserRole;
   name: string;
   created_at: string;
+  home_currency?: string;
   bot_user_id?: string | null;
   pairing_code?: string | null;
 }

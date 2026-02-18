@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Link } from "react-router";
 import {
   Coffee,
@@ -9,58 +9,218 @@ import {
   Smartphone,
   Heart,
   Plus,
-  TrendingUp,
-  Zap,
-  Calendar,
   Clock,
   Plane,
   Film,
   Circle,
-  Loader2
+  Loader2,
+  Check,
+  CalendarDays,
+  ChevronDown,
+  X,
+  SlidersHorizontal,
 } from "lucide-react";
-import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
+import {
+  AreaChart,
+  Area,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip as RechartsTooltip,
+  ResponsiveContainer,
+} from "recharts";
+import { format } from "date-fns";
+import { es } from "date-fns/locale";
 import { AddTransactionDrawer } from "../components/AddTransactionDrawer";
 import { useAuth } from "../contexts/AuthContext";
-import { useTransactions, useCategorySpending, useWeeklyCashFlow } from "../hooks/useData";
+import { useDashboardFilters, type DateRangePreset } from "../hooks/useDashboardFilters";
+import { useDashboardData, type CategorySummary } from "../hooks/useDashboardData";
+import { useCategories } from "../hooks/useData";
 import { Button } from "../components/ui/button";
-import { Card, CardHeader, CardTitle, CardContent } from "../components/ui/card";
+import { Card } from "../components/ui/card";
+import { Slider } from "../components/ui/slider";
 
-const getIcon = (iconName: string) => {
-  const icons: Record<string, any> = {
-    coffee: Coffee,
-    "shopping-bag": ShoppingBag,
-    car: Car,
-    utensils: Utensils,
-    smartphone: Smartphone,
-    home: Home,
-    heart: Heart,
-    plane: Plane,
-    film: Film,
-    circle: Circle,
-  };
-  return icons[iconName] || Circle;
+// ─── Icon Resolver ───
+const ICON_MAP: Record<string, any> = {
+  coffee: Coffee,
+  "shopping-bag": ShoppingBag,
+  car: Car,
+  utensils: Utensils,
+  smartphone: Smartphone,
+  home: Home,
+  heart: Heart,
+  plane: Plane,
+  film: Film,
+  circle: Circle,
 };
+const getIcon = (name: string) => ICON_MAP[name] || Circle;
 
+// ─── Date range presets ───
+const DATE_PRESETS: { value: DateRangePreset; label: string }[] = [
+  { value: "today", label: "Hoy" },
+  { value: "7d", label: "7d" },
+  { value: "30d", label: "30d" },
+  { value: "custom", label: "Personalizado" },
+];
+
+// ─── Custom Tooltip for the Chart ───
+function ChartTooltipContent({ active, payload, label }: any) {
+  if (!active || !payload?.length) return null;
+  const data = payload[0].payload;
+  return (
+    <div
+      className="bg-white border border-[var(--neutral-200)] rounded-[var(--radius-md)] p-3 shadow-[var(--shadow-float)]"
+      style={{ minWidth: 160 }}
+    >
+      <p className="text-sm font-semibold text-[var(--neutral-900)] mb-1">{label}</p>
+      <p className="text-2xl font-bold text-[var(--primary-main)]">
+        ${data.total.toLocaleString("es-AR", { minimumFractionDigits: 2 })}
+      </p>
+      <div className="flex items-center gap-1.5 mt-2">
+        <div
+          className="w-2.5 h-2.5 rounded-full"
+          style={{ backgroundColor: data.dominantCategory === "Sin gastos" ? "var(--neutral-300)" : "var(--primary-main)" }}
+        />
+        <span className="text-xs text-[var(--neutral-500)]">
+          {data.dominantCategory}
+        </span>
+      </div>
+    </div>
+  );
+}
+
+// ─── Category Multi Select Dropdown ───
+function CategoryDropdown({
+  categories,
+  selectedIds,
+  onToggle,
+}: {
+  categories: { id: string; name: string; icon: string | null }[];
+  selectedIds: string[];
+  onToggle: (id: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
+
+  const label =
+    selectedIds.length === 0
+      ? "Categorías"
+      : selectedIds.length === 1
+        ? categories.find((c) => c.id === selectedIds[0])?.name || "1 categoría"
+        : `${selectedIds.length} categorías`;
+
+  return (
+    <div className="relative" ref={ref}>
+      <button
+        onClick={() => setOpen(!open)}
+        className={`flex items-center gap-2 px-3 py-2 rounded-[var(--radius-sm)] text-sm font-medium transition-all border ${selectedIds.length > 0
+          ? "bg-[var(--primary-main)] text-white border-[var(--primary-main)]"
+          : "bg-white text-[var(--neutral-700)] border-[var(--neutral-200)] hover:border-[var(--neutral-300)]"
+          }`}
+      >
+        {label}
+        <ChevronDown className={`w-4 h-4 transition-transform ${open ? "rotate-180" : ""}`} />
+      </button>
+
+      {open && (
+        <div className="absolute top-full left-0 mt-2 w-56 bg-white border border-[var(--neutral-200)] rounded-[var(--radius-md)] shadow-[var(--shadow-float)] z-50 py-1 max-h-64 overflow-y-auto">
+          {categories.map((cat) => {
+            const isSelected = selectedIds.includes(cat.id);
+            const Icon = getIcon(cat.icon || "circle");
+            return (
+              <button
+                key={cat.id}
+                onClick={() => onToggle(cat.id)}
+                className="flex items-center gap-3 w-full px-3 py-2.5 hover:bg-[var(--neutral-50)] transition-colors text-left"
+              >
+                <div
+                  className={`w-5 h-5 rounded flex items-center justify-center text-white text-xs transition-all ${isSelected ? "bg-[var(--primary-main)]" : "border border-[var(--neutral-300)]"
+                    }`}
+                >
+                  {isSelected && <Check className="w-3 h-3" />}
+                </div>
+                <Icon className="w-4 h-4 text-[var(--neutral-500)]" />
+                <span className="text-sm text-[var(--neutral-700)]">{cat.name}</span>
+              </button>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Category Chip (compact icon) ───
+function CategoryChip({ item }: { item: CategorySummary }) {
+  const Icon = getIcon(item.icon);
+  return (
+    <div className="flex flex-col items-center gap-1.5 flex-1 min-w-[72px] max-w-[140px] py-3 px-2 rounded-[var(--radius-md)] hover:bg-[var(--neutral-50)] transition-colors cursor-default group">
+      <div
+        className="w-11 h-11 rounded-xl flex items-center justify-center transition-transform group-hover:scale-105"
+        style={{ backgroundColor: `${item.color}15` }}
+      >
+        <Icon className="w-5 h-5" style={{ color: item.color }} />
+      </div>
+      <span className="text-[11px] font-medium text-[var(--neutral-600)] text-center leading-tight truncate max-w-[80px]">
+        {item.name}
+      </span>
+      <span className="text-[11px] font-semibold text-[var(--neutral-900)]">
+        ${item.amount.toLocaleString("es-AR", { minimumFractionDigits: 0 })}
+      </span>
+      <span className="text-[10px] text-[var(--neutral-400)]">
+        {item.percentage}%
+      </span>
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════
+// ─── MAIN DASHBOARD ───
+// ═══════════════════════════════════════
 export function Dashboard() {
   const { profile } = useAuth();
-  const { transactions, loading: transactionsLoading, refresh: refreshTransactions } = useTransactions();
-  const { categorySpending } = useCategorySpending();
-  const { cashFlowData } = useWeeklyCashFlow();
+  const { categories } = useCategories();
+  const {
+    filters,
+    setDateRange,
+    setCustomDates,
+    toggleCategory,
+    setAmountRange,
+    clearFilters,
+    DEFAULT_AMOUNT_MAX,
+  } = useDashboardFilters();
+  const { categorySummary, chartData, totalSpend, loading, refresh } =
+    useDashboardData(filters);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+  const [showAmountSlider, setShowAmountSlider] = useState(false);
 
-  // Calculate metrics from real data
-  const totalSpentThisMonth = transactions.reduce((sum, t) => sum + t.amount_original, 0);
-  const availableToday = 2000 - (totalSpentThisMonth * 0.1); // Simplified calculation
-  const projectedEndMonth = totalSpentThisMonth * 1.5;
-  const potentialSavings = totalSpentThisMonth * 0.15;
+  // Custom date picker state
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [customFrom, setCustomFrom] = useState("");
+  const [customTo, setCustomTo] = useState("");
 
-  // Graceful loading for first-time data fetch
-  if (transactionsLoading && transactions.length === 0) {
+  const homeCurrency = profile?.home_currency || "USD";
+
+  const hasActiveFilters =
+    filters.categoryIds.length > 0 ||
+    filters.amountMin > 0 ||
+    filters.amountMax < DEFAULT_AMOUNT_MAX;
+
+  // ─── Loading state ───
+  if (loading && categorySummary.length === 0) {
     return (
       <div className="min-h-screen bg-[var(--bg-default)] flex items-center justify-center">
         <div className="text-center">
-          <Loader2 className="w-8 h-8 animate-spin text-[#4F46E5] mx-auto mb-4" />
-          <p className="text-[#6B7280]">Cargando tus finanzas...</p>
+          <Loader2 className="w-8 h-8 animate-spin text-[var(--primary-main)] mx-auto mb-4" />
+          <p className="text-[var(--neutral-500)]">Cargando tus finanzas...</p>
         </div>
       </div>
     );
@@ -68,208 +228,232 @@ export function Dashboard() {
 
   return (
     <div className="min-h-screen bg-[var(--bg-default)]">
-      {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-8 py-8">
-        {/* Welcome Section */}
-        <div className="mb-8">
-          <h2 className="text-[var(--font-h2-size)] font-bold text-[var(--neutral-900)] mb-2">Bienvenido, {profile?.name || 'Usuario'}</h2>
-          <p className="text-[var(--font-body-size)] text-[var(--neutral-500)]">Aquí tienes tu panorama financiero de la semana</p>
+      <main className="max-w-7xl mx-auto px-4 py-6 sm:px-8 sm:py-8">
+        {/* ─── Welcome + Total ─── */}
+        <div className="mb-6">
+          <h2 className="text-[var(--font-h2-size)] font-bold text-[var(--neutral-900)] mb-1">
+            Bienvenido, {profile?.name || "Usuario"}
+          </h2>
+          <p className="text-[var(--font-body-size)] text-[var(--neutral-500)]">
+            Total del período:{" "}
+            <span className="font-semibold text-[var(--neutral-900)]">
+              ${totalSpend.toLocaleString("es-AR", { minimumFractionDigits: 2 })}
+            </span>
+            <span className="text-[var(--font-caption-size)] text-[var(--neutral-400)] ml-1">
+              {homeCurrency}
+            </span>
+          </p>
         </div>
 
-        {/* Hero Section - Cash Flow Chart */}
-        <div className="mb-8">
-          <Card className="p-8">
-            <div className="flex items-center justify-between mb-6">
-              <div>
-                <h3 className="text-xl font-semibold text-[var(--neutral-900)] mb-1">Flujo de Caja Semanal</h3>
-                <p className="text-sm text-[var(--neutral-500)]">Gastos vs Presupuesto</p>
+        {/* ─── Filter Toolbar ─── */}
+        <Card className="p-4 mb-6">
+          <div className="flex flex-wrap items-center gap-3">
+            {/* Date range pills */}
+            <div className="flex items-center gap-1 bg-[var(--neutral-100)] rounded-[var(--radius-sm)] p-1">
+              {DATE_PRESETS.map((preset) => (
+                <button
+                  key={preset.value}
+                  onClick={() => {
+                    if (preset.value === "custom") {
+                      setShowDatePicker(true);
+                    } else {
+                      setShowDatePicker(false);
+                      setDateRange(preset.value);
+                    }
+                  }}
+                  className={`px-3 py-1.5 rounded-[6px] text-sm font-medium transition-all ${filters.dateRange === preset.value
+                    ? "bg-[var(--primary-main)] text-white shadow-sm"
+                    : "text-[var(--neutral-600)] hover:text-[var(--neutral-900)]"
+                    }`}
+                >
+                  {preset.label}
+                </button>
+              ))}
+            </div>
+
+            {/* Custom date inputs */}
+            {showDatePicker && (
+              <div className="flex items-center gap-2 flex-wrap">
+                <div className="flex items-center gap-1.5">
+                  <CalendarDays className="w-4 h-4 text-[var(--neutral-400)]" />
+                  <input
+                    type="date"
+                    value={customFrom}
+                    onChange={(e) => setCustomFrom(e.target.value)}
+                    className="text-sm border border-[var(--neutral-200)] rounded-[var(--radius-sm)] px-2 py-1.5 text-[var(--neutral-700)] bg-white"
+                  />
+                  <span className="text-[var(--neutral-400)] text-sm">→</span>
+                  <input
+                    type="date"
+                    value={customTo}
+                    onChange={(e) => setCustomTo(e.target.value)}
+                    className="text-sm border border-[var(--neutral-200)] rounded-[var(--radius-sm)] px-2 py-1.5 text-[var(--neutral-700)] bg-white"
+                  />
+                </div>
+                <button
+                  onClick={() => {
+                    if (customFrom && customTo) {
+                      setCustomDates(new Date(customFrom), new Date(customTo));
+                    }
+                  }}
+                  className="text-sm font-medium text-[var(--primary-main)] hover:underline"
+                >
+                  Aplicar
+                </button>
               </div>
-              <div className="flex items-center gap-4">
-                <div className="flex items-center gap-2">
-                  <div className="w-3 h-3 rounded-full bg-[#F43F5E]" />
-                  <span className="text-sm text-[var(--neutral-500)]">Gastos</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <div className="w-3 h-3 rounded-full bg-[var(--primary-main)]" />
-                  <span className="text-sm text-[var(--neutral-500)]">Presupuesto</span>
-                </div>
+            )}
+
+            {/* Divider */}
+            <div className="w-px h-6 bg-[var(--neutral-200)] hidden sm:block" />
+
+            {/* Category multi-select */}
+            <CategoryDropdown
+              categories={categories}
+              selectedIds={filters.categoryIds}
+              onToggle={toggleCategory}
+            />
+
+            {/* Amount slider toggle */}
+            <button
+              onClick={() => setShowAmountSlider(!showAmountSlider)}
+              className={`flex items-center gap-2 px-3 py-2 rounded-[var(--radius-sm)] text-sm font-medium transition-all border ${showAmountSlider || filters.amountMin > 0 || filters.amountMax < DEFAULT_AMOUNT_MAX
+                ? "bg-[var(--primary-main)] text-white border-[var(--primary-main)]"
+                : "bg-white text-[var(--neutral-700)] border-[var(--neutral-200)] hover:border-[var(--neutral-300)]"
+                }`}
+            >
+              <SlidersHorizontal className="w-4 h-4" />
+              Monto
+            </button>
+
+            {/* Clear filters */}
+            {hasActiveFilters && (
+              <button
+                onClick={clearFilters}
+                className="flex items-center gap-1 px-2 py-1.5 text-sm text-[var(--error-text)] hover:bg-[var(--error-bg)] rounded-[var(--radius-sm)] transition-colors"
+              >
+                <X className="w-3.5 h-3.5" />
+                Limpiar
+              </button>
+            )}
+          </div>
+
+          {/* Amount range slider */}
+          {showAmountSlider && (
+            <div className="mt-4 pt-4 border-t border-[var(--neutral-100)]">
+              <div className="flex items-center justify-between mb-3">
+                <span className="text-sm text-[var(--neutral-500)]">Rango de monto</span>
+                <span className="text-sm font-medium text-[var(--neutral-700)]">
+                  ${filters.amountMin} – ${filters.amountMax < DEFAULT_AMOUNT_MAX ? filters.amountMax : "∞"}
+                </span>
+              </div>
+              <Slider
+                value={[filters.amountMin, Math.min(filters.amountMax, 5000)]}
+                min={0}
+                max={5000}
+                step={50}
+                onValueChange={([min, max]: number[]) =>
+                  setAmountRange(min, max >= 5000 ? DEFAULT_AMOUNT_MAX : max)
+                }
+                className="w-full"
+              />
+              <div className="flex justify-between mt-1">
+                <span className="text-xs text-[var(--neutral-400)]">$0</span>
+                <span className="text-xs text-[var(--neutral-400)]">$5.000+</span>
               </div>
             </div>
-            <ResponsiveContainer width="100%" height={280}>
-              <AreaChart data={cashFlowData}>
+          )}
+        </Card>
+
+        {/* ─── Area Chart ─── */}
+        <Card className="p-4 sm:p-6 mb-6">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h3 className="text-lg font-semibold text-[var(--neutral-900)]">
+                Evolución de Gastos
+              </h3>
+              <p className="text-sm text-[var(--neutral-500)]">
+                {format(filters.dateFrom, "d MMM", { locale: es })} –{" "}
+                {format(filters.dateTo, "d MMM yyyy", { locale: es })}
+              </p>
+            </div>
+          </div>
+
+          {chartData.length === 0 ? (
+            <div className="h-[200px] sm:h-[280px] flex items-center justify-center text-[var(--neutral-400)]">
+              No hay datos para el rango seleccionado
+            </div>
+          ) : (
+            <ResponsiveContainer width="100%" height={280} className="!h-[200px] sm:!h-[280px]">
+              <AreaChart data={chartData}>
                 <defs>
-                  <linearGradient id="colorGastos" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#F43F5E" stopOpacity={0.15} />
-                    <stop offset="95%" stopColor="#F43F5E" stopOpacity={0} />
-                  </linearGradient>
-                  <linearGradient id="colorPresupuesto" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="var(--primary-main)" stopOpacity={0.15} />
-                    <stop offset="95%" stopColor="var(--primary-main)" stopOpacity={0} />
+                  <linearGradient id="colorTotal" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="var(--primary-light)" stopOpacity={0.18} />
+                    <stop offset="95%" stopColor="var(--primary-light)" stopOpacity={0} />
                   </linearGradient>
                 </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" vertical={false} />
+                <CartesianGrid
+                  strokeDasharray="3 3"
+                  stroke="var(--neutral-200)"
+                  vertical={false}
+                />
                 <XAxis
-                  dataKey="day"
-                  stroke="#9CA3AF"
-                  style={{ fontSize: '13px' }}
+                  dataKey="dateLabel"
+                  stroke="var(--neutral-400)"
+                  style={{ fontSize: "12px" }}
                   axisLine={false}
                   tickLine={false}
                 />
                 <YAxis
-                  stroke="#9CA3AF"
-                  style={{ fontSize: '13px' }}
+                  stroke="var(--neutral-400)"
+                  style={{ fontSize: "12px" }}
                   axisLine={false}
                   tickLine={false}
+                  tickFormatter={(v: number) => `$${v}`}
+                  width={50}
                 />
-                <Tooltip
-                  contentStyle={{
-                    backgroundColor: '#FFFFFF',
-                    border: '1px solid #E5E7EB',
-                    borderRadius: '12px',
-                    boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.05)',
-                    padding: '12px'
-                  }}
-                  labelStyle={{ fontWeight: 600, color: '#09090b', marginBottom: '4px' }}
-                />
+                <RechartsTooltip content={<ChartTooltipContent />} />
                 <Area
                   type="monotone"
-                  dataKey="presupuesto"
+                  dataKey="total"
                   stroke="var(--primary-main)"
-                  strokeWidth={2}
-                  fill="url(#colorPresupuesto)"
-                />
-                <Area
-                  type="monotone"
-                  dataKey="gastos"
-                  stroke="#F43F5E"
-                  strokeWidth={2}
-                  fill="url(#colorGastos)"
+                  strokeWidth={2.5}
+                  fill="url(#colorTotal)"
+                  dot={false}
+                  activeDot={{
+                    r: 6,
+                    fill: "var(--primary-main)",
+                    stroke: "#fff",
+                    strokeWidth: 2,
+                  }}
                 />
               </AreaChart>
             </ResponsiveContainer>
-          </Card>
-        </div>
+          )}
+        </Card>
 
-        {/* Metric Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-          {/* Available Today */}
-          <Card className="p-6">
-            <div className="flex items-start justify-between mb-4">
-              <div className="w-12 h-12 rounded-xl bg-[#10B981]/10 flex items-center justify-center">
-                <TrendingUp className="w-6 h-6 text-[#10B981]" />
-              </div>
-              <span className="px-2 py-1 bg-[#10B981]/10 text-[#10B981] text-xs font-medium rounded-full">
-                Saludable
-              </span>
-            </div>
-            <p className="text-sm text-[var(--neutral-500)] mb-2">Disponible hoy</p>
-            <p className="text-4xl font-bold text-[var(--neutral-900)]">${availableToday.toFixed(2)}</p>
-            <div className="mt-4 flex items-center gap-1 text-sm text-[#10B981]">
-              <TrendingUp className="w-4 h-4" />
-              <span>+12.5% vs semana pasada</span>
-            </div>
-          </Card>
+        {/* ─── Category Summary ─── */}
+        <Card className="p-4 sm:p-6 mb-6">
+          <h3 className="text-lg font-semibold text-[var(--neutral-900)] mb-3">
+            Resumen por Categoría
+          </h3>
 
-          {/* Projected End Month */}
-          <Card className="p-6">
-            <div className="flex items-start justify-between mb-4">
-              <div className="w-12 h-12 rounded-xl bg-[var(--primary-main)]/10 flex items-center justify-center">
-                <Calendar className="w-6 h-6 text-[var(--primary-main)]" />
-              </div>
-              <span className="px-2 py-1 bg-[var(--primary-main)]/10 text-[var(--primary-main)] text-xs font-medium rounded-full">
-                Proyección
-              </span>
+          {categorySummary.length === 0 ? (
+            <div className="py-8 text-center">
+              <p className="text-[var(--neutral-400)]">
+                No hay transacciones en este rango
+              </p>
             </div>
-            <p className="text-sm text-[var(--neutral-500)] mb-2">Gasto proyectado fin de mes</p>
-            <p className="text-4xl font-bold text-[var(--neutral-900)]">${projectedEndMonth.toFixed(2)}</p>
-            <div className="mt-4 flex items-center gap-1 text-sm text-[var(--neutral-500)]">
-              <span>Quedan 22 días</span>
-            </div>
-          </Card>
-
-          {/* Potential Savings */}
-          <Card className="p-6">
-            <div className="flex items-start justify-between mb-4">
-              <div className="w-12 h-12 rounded-xl bg-[#F59E0B]/10 flex items-center justify-center">
-                <Zap className="w-6 h-6 text-[#F59E0B]" />
-              </div>
-              <span className="px-2 py-1 bg-[#F59E0B]/10 text-[#F59E0B] text-xs font-medium rounded-full">
-                Oportunidad
-              </span>
-            </div>
-            <p className="text-sm text-[var(--neutral-500)] mb-2">Ahorro potencial</p>
-            <p className="text-4xl font-bold text-[var(--neutral-900)]">${potentialSavings.toFixed(2)}</p>
-            <div className="mt-4 flex items-center gap-1 text-sm text-[var(--neutral-500)]">
-              <span>Con pequeños ajustes</span>
-            </div>
-          </Card>
-        </div>
-
-        {/* Categories Section */}
-        <div className="mb-8">
-          <div className="flex items-center justify-between mb-6">
-            <div>
-              <h3 className="text-xl font-semibold text-[var(--neutral-900)] mb-1">Gasto por Categoría</h3>
-              <p className="text-sm text-[var(--neutral-500)]">Análisis de este mes</p>
-            </div>
-          </div>
-
-          {categorySpending.length === 0 ? (
-            <Card className="p-12 text-center border-[var(--neutral-200)]">
-              <p className="text-[var(--neutral-500)]">No hay gastos registrados aún</p>
-            </Card>
           ) : (
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-              {categorySpending.map((category) => {
-                const IconComponent = getIcon(category.icon);
-                return (
-                  <Card
-                    key={category.id}
-                    className="p-5 hover:shadow-md transition-all cursor-pointer group border-[var(--neutral-200)]"
-                  >
-                    <div className="flex flex-col items-center text-center">
-                      {/* Icon with colored background */}
-                      <div
-                        className="w-14 h-14 rounded-2xl flex items-center justify-center mb-3 group-hover:scale-110 transition-transform"
-                        style={{ backgroundColor: `${category.color}15` }}
-                      >
-                        <IconComponent
-                          className="w-7 h-7"
-                          style={{ color: category.color }}
-                        />
-                      </div>
-
-                      {/* Category name */}
-                      <p className="text-xs text-[var(--neutral-500)] mb-2">{category.name}</p>
-
-                      {/* Amount - Large and prominent */}
-                      <p className="text-xl font-bold text-[var(--neutral-900)] mb-1">
-                        ${category.amount.toFixed(0)}
-                      </p>
-
-                      {/* Percentage */}
-                      <div className="w-full bg-[#F3F4F6] rounded-full h-1.5 mb-2">
-                        <div
-                          className="h-1.5 rounded-full transition-all"
-                          style={{
-                            width: `${category.percentage}%`,
-                            backgroundColor: category.color
-                          }}
-                        />
-                      </div>
-                      <p className="text-xs font-medium" style={{ color: category.color }}>
-                        {category.percentage}%
-                      </p>
-                    </div>
-                  </Card>
-                );
-              })}
+            <div className="flex flex-wrap justify-evenly gap-2">
+              {categorySummary.map((item) => (
+                <CategoryChip key={item.name} item={item} />
+              ))}
             </div>
           )}
-        </div>
+        </Card>
 
-        {/* Quick Actions */}
-        <div className="flex items-center gap-4">
+        {/* ─── Quick Actions ─── */}
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 sm:gap-4">
           <Button
             onClick={() => setIsDrawerOpen(true)}
             size="lg"
@@ -296,7 +480,7 @@ export function Dashboard() {
         isOpen={isDrawerOpen}
         onClose={() => {
           setIsDrawerOpen(false);
-          refreshTransactions();
+          refresh();
         }}
       />
     </div>
