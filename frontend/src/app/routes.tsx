@@ -20,7 +20,7 @@ export const router = createBrowserRouter([
   },
   {
     path: "/dashboard",
-    Component: () => (
+    element: (
       <ProtectedRoute allowedRoles={['user']}>
         <Layout>
           <Dashboard />
@@ -30,7 +30,7 @@ export const router = createBrowserRouter([
   },
   {
     path: "/history",
-    Component: () => (
+    element: (
       <ProtectedRoute allowedRoles={['user']}>
         <Layout>
           <History />
@@ -40,7 +40,7 @@ export const router = createBrowserRouter([
   },
   {
     path: "/chat",
-    Component: () => (
+    element: (
       <ProtectedRoute allowedRoles={['user']}>
         <Layout>
           <div className="p-8">
@@ -53,7 +53,7 @@ export const router = createBrowserRouter([
   },
   {
     path: "/analytics",
-    Component: () => (
+    element: (
       <ProtectedRoute allowedRoles={['admin_b2b']}>
         <Layout>
           <Analytics />
@@ -63,7 +63,7 @@ export const router = createBrowserRouter([
   },
   {
     path: "/insights",
-    Component: () => (
+    element: (
       <ProtectedRoute allowedRoles={['admin_b2b']}>
         <Layout>
           <div className="p-8">
@@ -76,7 +76,7 @@ export const router = createBrowserRouter([
   },
   {
     path: "/global-data",
-    Component: () => (
+    element: (
       <ProtectedRoute allowedRoles={['admin_b2b']}>
         <Layout>
           <div className="p-8">
@@ -89,7 +89,7 @@ export const router = createBrowserRouter([
   },
   {
     path: "/users",
-    Component: () => (
+    element: (
       <ProtectedRoute allowedRoles={['admin_b2b']}>
         <Layout>
           <div className="p-8">
@@ -102,7 +102,7 @@ export const router = createBrowserRouter([
   },
   {
     path: "/settings",
-    Component: () => (
+    element: (
       <ProtectedRoute allowedRoles={['user']}>
         <Layout>
           <Settings />
@@ -112,7 +112,7 @@ export const router = createBrowserRouter([
   },
   {
     path: "/design-test",
-    Component: () => (
+    element: (
       <Layout>
         <DesignSystemTest />
       </Layout>

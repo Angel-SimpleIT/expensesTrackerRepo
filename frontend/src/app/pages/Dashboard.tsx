@@ -482,6 +482,7 @@ export function Dashboard() {
           setIsDrawerOpen(false);
           refresh();
         }}
+        categories={categories}
       />
     </div>
   );

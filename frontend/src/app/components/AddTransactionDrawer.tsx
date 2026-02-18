@@ -15,10 +15,12 @@ import {
 } from "lucide-react";
 import { supabase } from "../../utils/supabase";
 import { useAuth } from "../contexts/AuthContext";
+import { Category } from "../hooks/useData";
 
 interface AddTransactionDrawerProps {
   isOpen: boolean;
   onClose: () => void;
+  categories: Category[];
 }
 
 const iconMap: Record<string, any> = {
@@ -59,42 +61,19 @@ const colorMap: Record<string, string> = {
   film: "#F97316",
 };
 
-interface Category {
-  id: string;
-  name: string;
-  icon: string;
-}
-
-export function AddTransactionDrawer({ isOpen, onClose }: AddTransactionDrawerProps) {
+export function AddTransactionDrawer({ isOpen, onClose, categories }: AddTransactionDrawerProps) {
   const { user, profile } = useAuth();
   const [amount, setAmount] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
-  const [categories, setCategories] = useState<Category[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isLoadingCategories, setIsLoadingCategories] = useState(false);
 
+  // Reset state when drawer opens
   useEffect(() => {
     if (isOpen) {
-      fetchCategories();
+      setAmount("");
+      setSelectedCategory(null);
     }
   }, [isOpen]);
-
-  const fetchCategories = async () => {
-    setIsLoadingCategories(true);
-    try {
-      const { data, error } = await supabase
-        .from('categories')
-        .select('id, name, icon')
-        .or('user_id.is.null,user_id.eq.' + user?.id);
-
-      if (error) throw error;
-      if (data) setCategories(data);
-    } catch (error) {
-      console.error("Error fetching categories:", error);
-    } finally {
-      setIsLoadingCategories(false);
-    }
-  };
 
   const handleAmountChange = (value: string) => {
     if (/^\d*\.?\d{0,2}$/.test(value)) {
@@ -122,8 +101,6 @@ export function AddTransactionDrawer({ isOpen, onClose }: AddTransactionDrawerPr
       if (error) throw error;
 
       onClose();
-      setAmount("");
-      setSelectedCategory(null);
     } catch (error) {
       console.error("Error saving transaction:", error);
       alert("Error al guardar el gasto. Por favor, inténtalo de nuevo.");
@@ -185,49 +162,44 @@ export function AddTransactionDrawer({ isOpen, onClose }: AddTransactionDrawerPr
 
             <div className="px-6 py-6">
               <p className="text-sm font-medium text-[#09090b] mb-4">Categoría</p>
-              {isLoadingCategories ? (
-                <div className="flex justify-center py-8">
-                  <Loader2 className="w-8 h-8 animate-spin text-[#4F46E5]" />
-                </div>
-              ) : (
-                <div className="grid grid-cols-3 gap-3">
-                  {categories.map((category) => {
-                    const IconComponent = iconMap[category.icon] || ShoppingBag;
-                    const isSelected = selectedCategory === category.id;
-                    const color = colorMap[category.icon] || "#6B7280";
+              <div className="grid grid-cols-3 gap-3">
+                {categories.map((category) => {
+                  const iconKey = category.icon || "";
+                  const IconComponent = iconMap[iconKey] || ShoppingBag;
+                  const isSelected = selectedCategory === category.id;
+                  const color = colorMap[iconKey] || "#6B7280";
 
-                    return (
-                      <button
-                        key={category.id}
-                        onClick={() => setSelectedCategory(category.id)}
-                        className={`flex flex-col items-center gap-2 p-4 rounded-2xl transition-all ${isSelected
-                            ? "bg-[#4F46E5] shadow-md"
-                            : "bg-[#F9FAFB] hover:bg-[#F3F4F6]"
+                  return (
+                    <button
+                      key={category.id}
+                      onClick={() => setSelectedCategory(category.id)}
+                      className={`flex flex-col items-center gap-2 p-4 rounded-2xl transition-all ${isSelected
+                        ? "bg-[#4F46E5] shadow-md"
+                        : "bg-[#F9FAFB] hover:bg-[#F3F4F6]"
+                        }`}
+                    >
+                      <div
+                        className={`w-12 h-12 rounded-full flex items-center justify-center ${isSelected ? "bg-white/20" : ""
+                          }`}
+                        style={{
+                          backgroundColor: isSelected ? "transparent" : `${color}15`
+                        }}
+                      >
+                        <IconComponent
+                          className="w-6 h-6"
+                          style={{ color: isSelected ? "#FFFFFF" : color }}
+                        />
+                      </div>
+                      <span
+                        className={`text-xs font-medium text-center truncate w-full ${isSelected ? "text-white" : "text-[#6B7280]"
                           }`}
                       >
-                        <div
-                          className={`w-12 h-12 rounded-full flex items-center justify-center ${isSelected ? "bg-white/20" : ""
-                            }`}
-                          style={{
-                            backgroundColor: isSelected ? "transparent" : `${color}15`
-                          }}
-                        >
-                          <IconComponent
-                            className="w-6 h-6"
-                            style={{ color: isSelected ? "#FFFFFF" : color }}
-                          />
-                        </div>
-                        <span
-                          className={`text-xs font-medium text-center truncate w-full ${isSelected ? "text-white" : "text-[#6B7280]"
-                            }`}
-                        >
-                          {category.name}
-                        </span>
-                      </button>
-                    );
-                  })}
-                </div>
-              )}
+                        {category.name}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
             </div>
 
             <div className="px-6 py-6 border-t border-[#E5E7EB]">
@@ -235,8 +207,8 @@ export function AddTransactionDrawer({ isOpen, onClose }: AddTransactionDrawerPr
                 onClick={handleSubmit}
                 disabled={!amount || !selectedCategory || isSubmitting}
                 className={`w-full py-4 rounded-2xl font-semibold text-white transition-all flex items-center justify-center gap-2 ${amount && selectedCategory && !isSubmitting
-                    ? "bg-[#4F46E5] hover:bg-[#4338CA] shadow-sm"
-                    : "bg-[#E5E7EB] cursor-not-allowed"
+                  ? "bg-[#4F46E5] hover:bg-[#4338CA] shadow-sm"
+                  : "bg-[#E5E7EB] cursor-not-allowed"
                   }`}
               >
                 {isSubmitting ? (

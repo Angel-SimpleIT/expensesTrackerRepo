@@ -34,8 +34,8 @@ function getPresetDates(preset: DateRangePreset): { from: Date; to: Date } {
 export function useDashboardFilters() {
     const [searchParams, setSearchParams] = useSearchParams();
 
-    // Parse initial state from URL
-    const initialFilters = useMemo<DashboardFilters>(() => {
+    // Compute filters directly from URL on every render
+    const filters = useMemo<DashboardFilters>(() => {
         const range = (searchParams.get('range') as DateRangePreset) || '7d';
         const customFrom = searchParams.get('from');
         const customTo = searchParams.get('to');
@@ -53,85 +53,67 @@ export function useDashboardFilters() {
             amountMin: minAmt ? parseFloat(minAmt) : 0,
             amountMax: maxAmt ? parseFloat(maxAmt) : DEFAULT_AMOUNT_MAX,
         };
-    }, []); // only run once on mount
+    }, [searchParams]);
 
-    const [filters, setFiltersState] = useState<DashboardFilters>(initialFilters);
-
-    // Sync filters → URL (debounced via useEffect)
-    useEffect(() => {
-        const params = new URLSearchParams();
-        params.set('range', filters.dateRange);
-
-        if (filters.dateRange === 'custom') {
-            params.set('from', format(filters.dateFrom, 'yyyy-MM-dd'));
-            params.set('to', format(filters.dateTo, 'yyyy-MM-dd'));
-        }
-
-        if (filters.categoryIds.length > 0) {
-            params.set('categories', filters.categoryIds.join(','));
-        }
-
-        if (filters.amountMin > 0) {
-            params.set('amountMin', String(filters.amountMin));
-        }
-
-        if (filters.amountMax < DEFAULT_AMOUNT_MAX) {
-            params.set('amountMax', String(filters.amountMax));
-        }
-
-        setSearchParams(params, { replace: true });
-    }, [filters, setSearchParams]);
+    const updateFilters = useCallback((newParams: Partial<Record<string, string | null>>) => {
+        setSearchParams((prev) => {
+            const next = new URLSearchParams(prev);
+            Object.entries(newParams).forEach(([key, value]) => {
+                if (value === null) {
+                    next.delete(key);
+                } else if (value !== undefined) {
+                    next.set(key, value);
+                }
+            });
+            return next;
+        }, { replace: true });
+    }, [setSearchParams]);
 
     const setDateRange = useCallback((preset: DateRangePreset) => {
-        const dates = getPresetDates(preset);
-        setFiltersState((prev) => ({
-            ...prev,
-            dateRange: preset,
-            dateFrom: dates.from,
-            dateTo: dates.to,
-        }));
-    }, []);
+        const params: Record<string, string | null> = {
+            range: preset,
+            from: null,
+            to: null,
+        };
+        updateFilters(params);
+    }, [updateFilters]);
 
     const setCustomDates = useCallback((from: Date, to: Date) => {
-        setFiltersState((prev) => ({
-            ...prev,
-            dateRange: 'custom' as DateRangePreset,
-            dateFrom: startOfDay(from),
-            dateTo: endOfDay(to),
-        }));
-    }, []);
+        updateFilters({
+            range: 'custom',
+            from: format(from, 'yyyy-MM-dd'),
+            to: format(to, 'yyyy-MM-dd'),
+        });
+    }, [updateFilters]);
 
     const setCategoryIds = useCallback((ids: string[]) => {
-        setFiltersState((prev) => ({ ...prev, categoryIds: ids }));
-    }, []);
+        updateFilters({
+            categories: ids.length > 0 ? ids.join(',') : null,
+        });
+    }, [updateFilters]);
 
     const toggleCategory = useCallback((id: string) => {
-        setFiltersState((prev) => {
-            const exists = prev.categoryIds.includes(id);
-            return {
-                ...prev,
-                categoryIds: exists
-                    ? prev.categoryIds.filter((c) => c !== id)
-                    : [...prev.categoryIds, id],
-            };
+        const currentIds = filters.categoryIds;
+        const exists = currentIds.includes(id);
+        const nextIds = exists
+            ? currentIds.filter((c) => c !== id)
+            : [...currentIds, id];
+
+        updateFilters({
+            categories: nextIds.length > 0 ? nextIds.join(',') : null,
         });
-    }, []);
+    }, [filters.categoryIds, updateFilters]);
 
     const setAmountRange = useCallback((min: number, max: number) => {
-        setFiltersState((prev) => ({ ...prev, amountMin: min, amountMax: max }));
-    }, []);
+        updateFilters({
+            amountMin: min > 0 ? String(min) : null,
+            amountMax: max < DEFAULT_AMOUNT_MAX ? String(max) : null,
+        });
+    }, [updateFilters]);
 
     const clearFilters = useCallback(() => {
-        const dates = getPresetDates('7d');
-        setFiltersState({
-            dateRange: '7d',
-            dateFrom: dates.from,
-            dateTo: dates.to,
-            categoryIds: [],
-            amountMin: 0,
-            amountMax: DEFAULT_AMOUNT_MAX,
-        });
-    }, []);
+        setSearchParams(new URLSearchParams(), { replace: true });
+    }, [setSearchParams]);
 
     return {
         filters,
