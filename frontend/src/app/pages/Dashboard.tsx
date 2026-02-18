@@ -43,7 +43,7 @@ const getIcon = (iconName: string) => {
 
 export function Dashboard() {
   const { profile } = useAuth();
-  const { transactions, loading: transactionsLoading } = useTransactions();
+  const { transactions, loading: transactionsLoading, refresh: refreshTransactions } = useTransactions();
   const { categorySpending } = useCategorySpending();
   const { cashFlowData } = useWeeklyCashFlow();
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
@@ -54,12 +54,13 @@ export function Dashboard() {
   const projectedEndMonth = totalSpentThisMonth * 1.5;
   const potentialSavings = totalSpentThisMonth * 0.15;
 
-  if (transactionsLoading) {
+  // Graceful loading for first-time data fetch
+  if (transactionsLoading && transactions.length === 0) {
     return (
-      <div className="min-h-screen bg-[#F9FAFB] flex items-center justify-center">
+      <div className="min-h-screen bg-[var(--bg-default)] flex items-center justify-center">
         <div className="text-center">
           <Loader2 className="w-8 h-8 animate-spin text-[#4F46E5] mx-auto mb-4" />
-          <p className="text-[#6B7280]">Cargando datos...</p>
+          <p className="text-[#6B7280]">Cargando tus finanzas...</p>
         </div>
       </div>
     );
@@ -293,7 +294,10 @@ export function Dashboard() {
       {/* Add Transaction Drawer */}
       <AddTransactionDrawer
         isOpen={isDrawerOpen}
-        onClose={() => setIsDrawerOpen(false)}
+        onClose={() => {
+          setIsDrawerOpen(false);
+          refreshTransactions();
+        }}
       />
     </div>
   );

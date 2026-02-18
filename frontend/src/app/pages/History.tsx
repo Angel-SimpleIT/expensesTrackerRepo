@@ -90,7 +90,8 @@ export function History() {
     [transactions]
   );
 
-  if (loading) {
+  // Graceful loading for first-time data fetch
+  if (loading && transactions.length === 0) {
     return (
       <div className="min-h-screen bg-[var(--bg-default)] flex items-center justify-center">
         <div className="text-center">

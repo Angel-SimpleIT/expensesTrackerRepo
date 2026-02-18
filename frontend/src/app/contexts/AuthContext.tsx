@@ -81,16 +81,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     initializeAuth();
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if ((event === 'SIGNED_IN' || event === 'USER_UPDATED') && session?.user) {
-        setLoading(true);
+      if (session?.user) {
         setUser(session.user);
-        await fetchProfile(session.user.id);
-        setLoading(false);
+        if (event === 'SIGNED_IN' || event === 'USER_UPDATED') {
+          // Fetch profile but don't set loading=true unless there's no profile yet
+          // This prevents "stuck" screens if only a partial update happened
+          await fetchProfile(session.user.id);
+        }
       } else if (event === 'SIGNED_OUT') {
         setUser(null);
         setProfile(null);
-        setLoading(false);
       }
+
+      // Ensure loading is false after any auth change event handles initially
+      setLoading(false);
     });
 
     return () => {

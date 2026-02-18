@@ -55,59 +55,59 @@ export function useTransactions() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
-    useEffect(() => {
+    const fetchTransactions = async (showLoading = true) => {
         if (!user) {
             setTransactions([]);
             setLoading(false);
             return;
         }
 
-        const fetchTransactions = async () => {
-            setLoading(true);
+        if (showLoading) setLoading(true);
 
-            const { data, error } = await supabase
-                .from('transactions')
-                .select(`
+        const { data, error } = await supabase
+            .from('transactions')
+            .select(`
           *,
           categories (
             name,
             icon
           )
         `)
-                .eq('user_id', user.id)
-                .order('created_at', { ascending: false });
+            .eq('user_id', user.id)
+            .order('created_at', { ascending: false });
 
-            if (error) {
-                console.error('Error fetching transactions:', error);
-                setError(error.message);
-                setLoading(false);
-                return;
-            }
-
-            const formattedTransactions: Transaction[] = (data || []).map((t: any) => ({
-                id: t.id,
-                user_id: t.user_id,
-                raw_text: t.raw_text,
-                amount_original: parseFloat(t.amount_original),
-                currency_original: t.currency_original,
-                amount_base: t.amount_base ? parseFloat(t.amount_base) : null,
-                amount_usd: t.amount_usd ? parseFloat(t.amount_usd) : null,
-                category_id: t.category_id,
-                category_name: t.categories?.name || 'Sin categoría',
-                category_icon: t.categories?.icon || 'circle',
-                merchant_name: t.merchant_name,
-                is_ai_confirmed: t.is_ai_confirmed,
-                created_at: t.created_at,
-            }));
-
-            setTransactions(formattedTransactions);
+        if (error) {
+            console.error('Error fetching transactions:', error);
+            setError(error.message);
             setLoading(false);
-        };
+            return;
+        }
 
+        const formattedTransactions: Transaction[] = (data || []).map((t: any) => ({
+            id: t.id,
+            user_id: t.user_id,
+            raw_text: t.raw_text,
+            amount_original: parseFloat(t.amount_original),
+            currency_original: t.currency_original,
+            amount_base: t.amount_base ? parseFloat(t.amount_base) : null,
+            amount_usd: t.amount_usd ? parseFloat(t.amount_usd) : null,
+            category_id: t.category_id,
+            category_name: t.categories?.name || 'Sin categoría',
+            category_icon: t.categories?.icon || 'circle',
+            merchant_name: t.merchant_name,
+            is_ai_confirmed: t.is_ai_confirmed,
+            created_at: t.created_at,
+        }));
+
+        setTransactions(formattedTransactions);
+        setLoading(false);
+    };
+
+    useEffect(() => {
         fetchTransactions();
     }, [user]);
 
-    return { transactions, loading, error };
+    return { transactions, loading, error, refresh: () => fetchTransactions(false) };
 }
 
 export function useCategories() {
