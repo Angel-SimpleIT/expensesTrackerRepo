@@ -12,21 +12,21 @@ export function ProtectedRoute({ children, allowedRoles }: ProtectedRouteProps) 
   const { user, profile, loading } = useAuth();
   const location = useLocation();
 
-  // Show loading spinner while checking auth
-  if (loading) {
+  // Show loading spinner while checking auth or fetching profile
+  if (loading || (user && !profile)) {
     return (
       <div className="min-h-screen bg-white flex items-center justify-center">
         <div className="text-center">
           <Loader2 className="w-8 h-8 text-[#4F46E5] animate-spin mx-auto mb-4" />
-          <p className="text-sm text-[#6B7280]">Cargando...</p>
+          <p className="text-sm text-[#6B7280]">Cargando perfil...</p>
         </div>
       </div>
     );
   }
 
-  // Redirect to login if not authenticated
-  if (!user || !profile) {
-    return <Navigate to="/login" state={{ from: location }} replace />;
+  // Final safety check for profile (satisfies TypeScript)
+  if (!profile) {
+    return <Navigate to="/login" replace />;
   }
 
   // Check if user has required role

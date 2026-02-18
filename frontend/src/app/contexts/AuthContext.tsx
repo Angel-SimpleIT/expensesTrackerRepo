@@ -19,54 +19,77 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   // Fetch profile from database
+  // Fetch profile from database
   const fetchProfile = async (userId: string) => {
-    const { data, error } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('id', userId)
-      .single();
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', userId)
+        .single();
 
-    if (error) {
-      console.error('Error fetching profile:', error);
+      if (error) {
+        // Ignore AbortError
+        if (error.message && (error.message.includes('AbortError') || error.message.includes('aborted'))) {
+          return null;
+        }
+        console.error('Error fetching profile:', error);
+        return null;
+      }
+
+      const profileData = {
+        id: data.id,
+        email: data.email,
+        role: data.role as UserRole,
+        name: data.full_name || '',
+        created_at: data.created_at,
+        bot_user_id: data.bot_user_id,
+        pairing_code: data.pairing_code,
+      } as Profile;
+
+      setProfile(profileData);
+      return profileData;
+    } catch (err: any) {
+      if (err.name === 'AbortError' || err.message?.includes('aborted')) {
+        return null;
+      }
+      console.error('Unexpected error fetching profile:', err);
       return null;
     }
-
-    return {
-      id: data.id,
-      email: data.email,
-      role: data.role as UserRole,
-      name: data.full_name || '',
-      created_at: data.created_at,
-      bot_user_id: data.bot_user_id,
-      pairing_code: data.pairing_code,
-    } as Profile;
   };
 
   useEffect(() => {
-    // Check for existing session
     const initializeAuth = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
+      try {
+        const { data: { session }, error } = await supabase.auth.getSession();
+        if (error) throw error;
 
-      if (session?.user) {
-        setUser(session.user);
-        const profileData = await fetchProfile(session.user.id);
-        setProfile(profileData);
+        if (session?.user) {
+          setUser(session.user);
+          await fetchProfile(session.user.id);
+        }
+      } catch (error: any) {
+        if (error.name === 'AbortError' || error.message?.includes('AbortError') || error.message?.includes('aborted')) {
+          return;
+        }
+        console.error('Error initializing auth:', error);
+      } finally {
+        setLoading(false);
       }
-
-      setLoading(false);
     };
 
     initializeAuth();
 
-    // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if (event === 'SIGNED_IN' && session?.user) {
+      if ((event === 'SIGNED_IN' || event === 'USER_UPDATED') && session?.user) {
+        setLoading(true);
         setUser(session.user);
-        const profileData = await fetchProfile(session.user.id);
-        setProfile(profileData);
+        await fetchProfile(session.user.id);
+        setLoading(false);
       } else if (event === 'SIGNED_OUT') {
         setUser(null);
         setProfile(null);
+        setLoading(false);
       }
     });
 
@@ -77,37 +100,41 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signIn = async (email: string, password: string): Promise<{ success: boolean; error?: string }> => {
     setLoading(true);
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
 
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
+      if (error) {
+        setLoading(false);
+        return { success: false, error: error.message };
+      }
 
-    if (error) {
+      if (data.user) {
+        setUser(data.user);
+        await fetchProfile(data.user.id);
+      }
+
       setLoading(false);
-      return { success: false, error: error.message };
+      return { success: true };
+    } catch (err: any) {
+      setLoading(false);
+      return { success: false, error: err.message || 'Error inesperado' };
     }
-
-    if (data.user) {
-      setUser(data.user);
-      const profileData = await fetchProfile(data.user.id);
-      setProfile(profileData);
-    }
-
-    setLoading(false);
-    return { success: true };
   };
 
   const signOut = async () => {
+    setLoading(true);
     await supabase.auth.signOut();
     setUser(null);
     setProfile(null);
+    setLoading(false);
   };
 
   const updateProfile = async (updates: Partial<Profile>) => {
     if (!profile) return;
 
-    // Map frontend field names to database column names
     const dbUpdates: Record<string, any> = {};
     if (updates.name !== undefined) dbUpdates.full_name = updates.name;
     if (updates.bot_user_id !== undefined) dbUpdates.bot_user_id = updates.bot_user_id;
@@ -123,7 +150,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return;
     }
 
-    // Update local state
     setProfile({ ...profile, ...updates });
   };
 

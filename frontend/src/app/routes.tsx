@@ -7,6 +7,7 @@ import { Settings } from "./pages/Settings";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import { Layout } from "./components/Layout";
 import { RootRedirect } from "./components/RootRedirect";
+import { DesignSystemTest } from "./pages/DesignSystemTest";
 
 export const router = createBrowserRouter([
   {
@@ -107,6 +108,14 @@ export const router = createBrowserRouter([
           <Settings />
         </Layout>
       </ProtectedRoute>
+    ),
+  },
+  {
+    path: "/design-test",
+    Component: () => (
+      <Layout>
+        <DesignSystemTest />
+      </Layout>
     ),
   },
 ]);

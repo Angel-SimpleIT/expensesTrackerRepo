@@ -16,6 +16,9 @@ import {
 } from "lucide-react";
 import { EditTransactionModal } from "../components/EditTransactionModal";
 import { useTransactions } from "../hooks/useData";
+import { Input } from "../components/ui/input";
+import { Button } from "../components/ui/button";
+import { Card } from "../components/ui/card";
 
 // Color palette for categories
 const CATEGORY_COLORS: Record<string, string> = {
@@ -89,10 +92,10 @@ export function History() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#F9FAFB] flex items-center justify-center">
+      <div className="min-h-screen bg-[var(--bg-default)] flex items-center justify-center">
         <div className="text-center">
-          <Loader2 className="w-8 h-8 animate-spin text-[#4F46E5] mx-auto mb-4" />
-          <p className="text-[#6B7280]">Cargando historial...</p>
+          <Loader2 className="w-8 h-8 animate-spin text-[var(--primary-main)] mx-auto mb-4" />
+          <p className="text-[var(--neutral-500)]">Cargando historial...</p>
         </div>
       </div>
     );
@@ -100,16 +103,16 @@ export function History() {
 
   if (error) {
     return (
-      <div className="min-h-screen bg-[#F9FAFB] flex items-center justify-center">
+      <div className="min-h-screen bg-[var(--bg-default)] flex items-center justify-center">
         <div className="text-center">
-          <p className="text-[#F43F5E]">Error: {error}</p>
+          <p className="text-[var(--error-text)]">Error: {error}</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-[#F9FAFB]">
+    <div className="min-h-screen bg-[var(--bg-default)]">
       {/* Main Content */}
       <main className="max-w-5xl mx-auto px-8 py-8">
         {/* Page Title */}
@@ -121,23 +124,22 @@ export function History() {
         {/* Search and Filter Bar */}
         <div className="mb-6 flex items-center gap-4">
           <div className="flex-1 relative">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-[#9CA3AF]" />
-            <input
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--neutral-400)]" />
+            <Input
               type="text"
               placeholder="Buscar por comercio, categoría o descripción..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-12 pr-4 py-3 bg-white border border-[#E5E7EB] rounded-2xl text-sm text-[#09090b] placeholder:text-[#9CA3AF] focus:outline-none focus:ring-2 focus:ring-[#4F46E5] focus:border-transparent"
+              className="pl-9"
             />
           </div>
-          <button className="flex items-center gap-2 px-4 py-3 bg-white border border-[#E5E7EB] rounded-2xl text-sm text-[#6B7280] hover:bg-[#F9FAFB] transition-colors">
-            <Filter className="w-4 h-4" />
-            <span>Filtros</span>
-          </button>
+          <Button variant="outline" className="bg-white" leftIcon={<Filter className="w-4 h-4" />}>
+            Filtros
+          </Button>
         </div>
 
         {/* Transactions List */}
-        <div className="bg-white rounded-2xl border border-[#E5E7EB] shadow-sm overflow-hidden">
+        <Card className="overflow-hidden border border-[#E5E7EB] shadow-sm bg-white p-0">
           {filteredTransactions.length === 0 ? (
             <div className="p-12 text-center">
               <p className="text-[#6B7280]">
@@ -222,22 +224,22 @@ export function History() {
               })}
             </div>
           )}
-        </div>
+        </Card>
 
         {/* Summary Footer */}
         <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="bg-white rounded-2xl border border-[#E5E7EB] p-6 shadow-sm">
+          <Card className="p-6">
             <p className="text-sm text-[#6B7280] mb-2">Total Gastos</p>
             <p className="text-3xl font-bold text-[#F43F5E]">
               -${totalExpenses.toFixed(2)}
             </p>
-          </div>
-          <div className="bg-white rounded-2xl border border-[#E5E7EB] p-6 shadow-sm">
+          </Card>
+          <Card className="p-6">
             <p className="text-sm text-[#6B7280] mb-2">Transacciones</p>
             <p className="text-3xl font-bold text-[#4F46E5]">
               {transactions.length}
             </p>
-          </div>
+          </Card>
         </div>
       </main>
 
