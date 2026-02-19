@@ -49,65 +49,123 @@ const CATEGORY_COLORS: Record<string, string> = {
 
 const DEFAULT_COLOR = '#6B7280';
 
-export function useTransactions() {
+interface UseTransactionsOptions {
+    page?: number;
+    pageSize?: number;
+    startDate?: Date | undefined;
+    endDate?: Date | undefined;
+    searchQuery?: string;
+}
+
+export function useTransactions(options: UseTransactionsOptions = {}) {
     const { user } = useAuth();
     const [transactions, setTransactions] = useState<Transaction[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    const [totalCount, setTotalCount] = useState(0);
+
+    const { page = 1, pageSize = 20, startDate, endDate, searchQuery } = options;
 
     const fetchTransactions = async (showLoading = true) => {
         if (!user) {
             setTransactions([]);
+            setTotalCount(0);
             setLoading(false);
             return;
         }
 
         if (showLoading) setLoading(true);
 
-        const { data, error } = await supabase
-            .from('transactions')
-            .select(`
-          *,
-          categories (
-            name,
-            icon
-          )
-        `)
-            .eq('user_id', user.id)
-            .order('created_at', { ascending: false });
+        try {
+            let query = supabase
+                .from('transactions')
+                .select(`
+                  *,
+                  categories (
+                    name,
+                    icon
+                  )
+                `, { count: 'exact' })
+                .eq('user_id', user.id)
+                .order('created_at', { ascending: false });
 
-        if (error) {
-            console.error('Error fetching transactions:', error);
-            setError(error.message);
+            // Apply date filters
+            if (startDate) {
+                query = query.gte('created_at', startDate.toISOString());
+            }
+            if (endDate) {
+                // Ensure end date covers the whole day
+                const end = new Date(endDate);
+                end.setHours(23, 59, 59, 999);
+                query = query.lte('created_at', end.toISOString());
+            }
+
+            // Apply search filter
+            if (searchQuery && searchQuery.trim() !== '') {
+                const term = searchQuery.trim();
+                // We use .or() to search in multiple columns. 
+                // Note: filtering on joined tables (categories.name) is more complex in simple query builder,
+                // so we focus on merchant_name and raw_text for now.
+                query = query.or(`merchant_name.ilike.%${term}%,raw_text.ilike.%${term}%`);
+            }
+
+            // Apply pagination
+            if (page && pageSize) {
+                const from = (page - 1) * pageSize;
+                const to = from + pageSize - 1;
+                query = query.range(from, to);
+            }
+
+            const { data, error, count } = await query;
+
+            if (error) {
+                console.error('Error fetching transactions:', error);
+                setError(error.message);
+                setLoading(false);
+                return;
+            }
+
+            const formattedTransactions: Transaction[] = (data || []).map((t: any) => ({
+                id: t.id,
+                user_id: t.user_id,
+                raw_text: t.raw_text,
+                amount_original: parseFloat(t.amount_original),
+                currency_original: t.currency_original,
+                amount_base: t.amount_base ? parseFloat(t.amount_base) : null,
+                amount_usd: t.amount_usd ? parseFloat(t.amount_usd) : null,
+                category_id: t.category_id,
+                category_name: t.categories?.name || 'Sin categoría',
+                category_icon: t.categories?.icon || 'circle',
+                merchant_name: t.merchant_name,
+                is_ai_confirmed: t.is_ai_confirmed,
+                created_at: t.created_at,
+            }));
+
+            setTransactions(formattedTransactions);
+            setTotalCount(count || 0);
             setLoading(false);
-            return;
+        } catch (err: any) {
+            console.error('Unexpected error fetching transactions:', err);
+            setError(err.message || 'Error inesperado');
+            setLoading(false);
         }
-
-        const formattedTransactions: Transaction[] = (data || []).map((t: any) => ({
-            id: t.id,
-            user_id: t.user_id,
-            raw_text: t.raw_text,
-            amount_original: parseFloat(t.amount_original),
-            currency_original: t.currency_original,
-            amount_base: t.amount_base ? parseFloat(t.amount_base) : null,
-            amount_usd: t.amount_usd ? parseFloat(t.amount_usd) : null,
-            category_id: t.category_id,
-            category_name: t.categories?.name || 'Sin categoría',
-            category_icon: t.categories?.icon || 'circle',
-            merchant_name: t.merchant_name,
-            is_ai_confirmed: t.is_ai_confirmed,
-            created_at: t.created_at,
-        }));
-
-        setTransactions(formattedTransactions);
-        setLoading(false);
     };
 
     useEffect(() => {
+        // Debouncing logic could be handled here or in the component. 
+        // For simplicity, we assume the component passes a debounced value or we fetch directly.
+        // Given the requirement, let's just fetch when options change.
         fetchTransactions();
-    }, [user]);
+    }, [user, page, pageSize, startDate, endDate, searchQuery]);
 
-    return { transactions, loading, error, refresh: () => fetchTransactions(false) };
+    return {
+        transactions,
+        loading,
+        error,
+        totalCount,
+        totalPages: Math.ceil(totalCount / pageSize),
+        refresh: () => fetchTransactions(false)
+    };
 }
 
 export function useCategories() {
@@ -138,7 +196,10 @@ export function useCategories() {
 }
 
 export function useCategorySpending() {
-    const { transactions } = useTransactions();
+    // Determine a large enough page size to simulate "all" for now, or just use default pagination
+    // Since this hook seems unused, we'll just use the default which gives 20 items. 
+    // If it were used, we'd pass { pageSize: 1000 } or similar.
+    const { transactions } = useTransactions({ pageSize: 1000 });
     const [categorySpending, setCategorySpending] = useState<CategorySpending[]>([]);
 
     useEffect(() => {
@@ -150,7 +211,7 @@ export function useCategorySpending() {
         // Aggregate spending by category
         const spendingMap = new Map<string, { name: string; icon: string; amount: number }>();
 
-        transactions.forEach((t) => {
+        transactions.forEach((t: Transaction) => {
             const categoryName = t.category_name || 'Otros';
             const existing = spendingMap.get(categoryName);
 
@@ -185,7 +246,8 @@ export function useCategorySpending() {
 }
 
 export function useWeeklyCashFlow() {
-    const { transactions } = useTransactions();
+    // Use large page size to ensure we get enough data for the week
+    const { transactions } = useTransactions({ pageSize: 1000 });
     const [cashFlowData, setCashFlowData] = useState<{ day: string; gastos: number; presupuesto: number }[]>([]);
 
     useEffect(() => {
@@ -201,11 +263,11 @@ export function useWeeklyCashFlow() {
 
             // Calculate spending for this day
             const daySpending = transactions
-                .filter((t) => {
+                .filter((t: Transaction) => {
                     const transactionDate = new Date(t.created_at);
                     return transactionDate.toDateString() === date.toDateString();
                 })
-                .reduce((sum, t) => sum + t.amount_original, 0);
+                .reduce((sum: number, t: Transaction) => sum + t.amount_original, 0);
 
             weekData.push({
                 day: dayName,

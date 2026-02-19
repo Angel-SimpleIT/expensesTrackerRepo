@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import {
   Search,
   Filter,
@@ -12,13 +12,35 @@ import {
   Plane,
   Film,
   Circle,
-  Loader2
+  Loader2,
+  Calendar as CalendarIcon,
+  ChevronLeft,
+  ChevronRight
 } from "lucide-react";
+import { format } from "date-fns";
+import { es } from "date-fns/locale";
+import { DateRange } from "react-day-picker";
+
 import { EditTransactionModal } from "../components/EditTransactionModal";
 import { useTransactions } from "../hooks/useData";
 import { Input } from "../components/ui/input";
 import { Button } from "../components/ui/button";
 import { Card } from "../components/ui/card";
+import { Calendar } from "../components/ui/calendar";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "../components/ui/popover";
+import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from "../components/ui/pagination";
+import { cn } from "../components/ui/utils";
 
 // Color palette for categories
 const CATEGORY_COLORS: Record<string, string> = {
@@ -68,30 +90,73 @@ const formatDate = (dateString: string) => {
 };
 
 export function History() {
-  const { transactions, loading, error } = useTransactions();
+  // --- STATE ---
+  const [date, setDate] = useState<DateRange | undefined>();
+  const [currentPage, setCurrentPage] = useState(1);
+  const PAGE_SIZE = 10;
+
+
+
   const [selectedTransaction, setSelectedTransaction] = useState<any | null>(null);
+
+  // --- SEARCH STATE ---
   const [searchQuery, setSearchQuery] = useState("");
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState("");
 
-  // Filter transactions based on search query
-  const filteredTransactions = useMemo(() => {
-    if (!searchQuery) return transactions;
+  // Debounce search query
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearchQuery(searchQuery);
+      // We don't reset page here because the effect runs on mount too potentially.
+      // Actually, optimal is to reset page when debounced query changes
+    }, 500);
 
-    const query = searchQuery.toLowerCase();
-    return transactions.filter((t) =>
-      t.merchant_name?.toLowerCase().includes(query) ||
-      t.category_name?.toLowerCase().includes(query) ||
-      t.raw_text?.toLowerCase().includes(query)
-    );
-  }, [transactions, searchQuery]);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
 
-  // Calculate totals
+  // Reset page when search actually changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [debouncedSearchQuery]);
+
+  const { transactions, loading, error, totalPages, totalCount } = useTransactions({
+    page: currentPage,
+    pageSize: PAGE_SIZE,
+    startDate: date?.from,
+    endDate: date?.to,
+    searchQuery: debouncedSearchQuery,
+  });
+
+  // Filter transactions based on search query (Server-side now, so we just use transactions)
+  const filteredTransactions = transactions;
+
+  // Calculate totals (of displayed page)
   const totalExpenses = useMemo(() =>
     transactions.reduce((sum, t) => sum + t.amount_original, 0),
     [transactions]
   );
 
+  // --- HANDLERS ---
+  const handlePageChange = (newPage: number) => {
+    if (newPage >= 1 && newPage <= totalPages) {
+      setCurrentPage(newPage);
+    }
+  };
+
+  const handleDateSelect = (newDate: DateRange | undefined) => {
+    setDate(newDate);
+    setCurrentPage(1); // Reset to first page on filter change
+  };
+
+  const clearFilters = () => {
+    setDate(undefined);
+    setSearchQuery("");
+    setDebouncedSearchQuery("");
+    setCurrentPage(1);
+  };
+
   // Graceful loading for first-time data fetch
-  if (loading && transactions.length === 0) {
+  if (loading && transactions.length === 0 && !date) {
     return (
       <div className="min-h-screen bg-[var(--bg-default)] flex items-center justify-center">
         <div className="text-center">
@@ -115,7 +180,7 @@ export function History() {
   return (
     <div className="min-h-screen bg-[var(--bg-default)]">
       {/* Main Content */}
-      <main className="max-w-5xl mx-auto px-8 py-8">
+      <main className="max-w-5xl mx-auto px-4 py-8 sm:px-8">
         {/* Page Title */}
         <div className="mb-6">
           <h1 className="text-2xl font-bold text-[#09090b] mb-1">Historial de Transacciones</h1>
@@ -123,20 +188,64 @@ export function History() {
         </div>
 
         {/* Search and Filter Bar */}
-        <div className="mb-6 flex items-center gap-4">
-          <div className="flex-1 relative">
+        <div className="mb-6 flex flex-col sm:flex-row items-stretch sm:items-center gap-4">
+          <div className="flex-1 relative w-full">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--neutral-400)]" />
             <Input
               type="text"
-              placeholder="Buscar por comercio, categoría o descripción..."
+              placeholder="Buscar en esta página..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="pl-9"
             />
           </div>
-          <Button variant="outline" className="bg-white" leftIcon={<Filter className="w-4 h-4" />}>
-            Filtros
-          </Button>
+
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button
+                variant="outline"
+                className={cn(
+                  "w-full sm:w-[280px] justify-start text-left font-normal bg-white",
+                  !date && "text-muted-foreground"
+                )}
+                leftIcon={<CalendarIcon className="mr-2 h-4 w-4" />}
+              >
+                {date?.from ? (
+                  date.to ? (
+                    <>
+                      {format(date.from, "d MMM, y", { locale: es })} -{" "}
+                      {format(date.to, "d MMM, y", { locale: es })}
+                    </>
+                  ) : (
+                    format(date.from, "d MMM, y", { locale: es })
+                  )
+                ) : (
+                  <span>Filtrar por fecha</span>
+                )}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0" align="end">
+              <Calendar
+                initialFocus
+                mode="range"
+                defaultMonth={date?.from}
+                selected={date}
+                onSelect={handleDateSelect}
+                numberOfMonths={2}
+                locale={es}
+              />
+            </PopoverContent>
+          </Popover>
+
+          {(date || searchQuery) && (
+            <Button
+              variant="ghost"
+              onClick={clearFilters}
+              className="text-red-500 hover:text-red-600 hover:bg-red-50 sm:w-auto w-full"
+            >
+              Limpiar
+            </Button>
+          )}
         </div>
 
         {/* Transactions List */}
@@ -145,8 +254,8 @@ export function History() {
             <div className="p-12 text-center">
               <p className="text-[#6B7280]">
                 {transactions.length === 0
-                  ? "No tienes transacciones registradas"
-                  : "No se encontraron transacciones"}
+                  ? "No se encontraron transacciones en este rango/página"
+                  : "No se encontraron transacciones con tu búsqueda"}
               </p>
             </div>
           ) : (
@@ -227,10 +336,105 @@ export function History() {
           )}
         </Card>
 
+        {/* Pagination Controls */}
+        {totalPages > 1 && (
+          <div className="mt-6 flex flex-col items-center gap-2">
+            <Pagination>
+              <PaginationContent>
+                <PaginationItem>
+                  <PaginationPrevious
+                    href="#"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      handlePageChange(currentPage - 1);
+                    }}
+                    className={cn(currentPage === 1 && "pointer-events-none opacity-50")}
+                  />
+                </PaginationItem>
+
+                {/* Dynamic Pagination Pages */}
+                {(() => {
+                  const pages = [];
+                  // Logic to show a limited number of pages
+                  let startPage = Math.max(1, currentPage - 2);
+                  let endPage = Math.min(totalPages, startPage + 4);
+
+                  if (endPage - startPage < 4) {
+                    startPage = Math.max(1, endPage - 4);
+                  }
+
+                  if (startPage > 1) {
+                    pages.push(
+                      <PaginationItem key="1">
+                        <PaginationLink href="#" onClick={(e) => { e.preventDefault(); handlePageChange(1); }}>1</PaginationLink>
+                      </PaginationItem>
+                    );
+                    if (startPage > 2) {
+                      pages.push(
+                        <PaginationItem key="ellipsis-start">
+                          <span className="flex h-9 w-9 items-center justify-center text-muted-foreground">...</span>
+                        </PaginationItem>
+                      );
+                    }
+                  }
+
+                  for (let i = startPage; i <= endPage; i++) {
+                    pages.push(
+                      <PaginationItem key={i}>
+                        <PaginationLink
+                          href="#"
+                          isActive={currentPage === i}
+                          onClick={(e) => {
+                            e.preventDefault();
+                            handlePageChange(i);
+                          }}
+                        >
+                          {i}
+                        </PaginationLink>
+                      </PaginationItem>
+                    );
+                  }
+
+                  if (endPage < totalPages) {
+                    if (endPage < totalPages - 1) {
+                      pages.push(
+                        <PaginationItem key="ellipsis-end">
+                          <span className="flex h-9 w-9 items-center justify-center text-muted-foreground">...</span>
+                        </PaginationItem>
+                      );
+                    }
+                    pages.push(
+                      <PaginationItem key={totalPages}>
+                        <PaginationLink href="#" onClick={(e) => { e.preventDefault(); handlePageChange(totalPages); }}>{totalPages}</PaginationLink>
+                      </PaginationItem>
+                    );
+                  }
+
+                  return pages;
+                })()}
+
+                <PaginationItem>
+                  <PaginationNext
+                    href="#"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      handlePageChange(currentPage + 1);
+                    }}
+                    className={cn(currentPage === totalPages && "pointer-events-none opacity-50")}
+                  />
+                </PaginationItem>
+              </PaginationContent>
+            </Pagination>
+            <div className="text-center text-xs text-muted-foreground">
+              Mostrando {((currentPage - 1) * PAGE_SIZE) + 1} - {Math.min(currentPage * PAGE_SIZE, totalCount)} de {totalCount} transacciones
+            </div>
+          </div>
+        )}
+
         {/* Summary Footer */}
         <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-4">
           <Card className="p-6">
-            <p className="text-sm text-[#6B7280] mb-2">Total Gastos</p>
+            <p className="text-sm text-[#6B7280] mb-2">Total Gastos (Página)</p>
             <p className="text-3xl font-bold text-[#F43F5E]">
               -${totalExpenses.toFixed(2)}
             </p>
@@ -238,8 +442,9 @@ export function History() {
           <Card className="p-6">
             <p className="text-sm text-[#6B7280] mb-2">Transacciones</p>
             <p className="text-3xl font-bold text-[#4F46E5]">
-              {transactions.length}
+              {totalCount}
             </p>
+            <p className="text-xs text-[#6B7280] mt-1">Total acumulado</p>
           </Card>
         </div>
       </main>

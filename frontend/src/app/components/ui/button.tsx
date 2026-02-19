@@ -22,6 +22,11 @@ export const buttonVariants = cva(
           'hover:bg-white/20',
           'font-normal'
         ],
+        ghostLight: [
+          'bg-transparent text-[var(--neutral-700)]',
+          'hover:bg-[var(--neutral-100)] hover:text-[var(--neutral-900)]',
+          'font-normal'
+        ],
         filter: [
           'bg-white text-[var(--neutral-900)]',
           'border border-[var(--neutral-200)]',
@@ -36,7 +41,7 @@ export const buttonVariants = cva(
         // Compatibility variants for existing components (sidebar, etc) mapped to closest design token
         default: 'bg-[var(--accent-main)] text-white hover:bg-[#00C272]',
         destructive: 'bg-[var(--error-bg)] text-[var(--error-text)] hover:bg-[var(--error-bg)]/80',
-        outline: 'border border-[var(--neutral-200)] bg-transparent hover:bg-[var(--neutral-100)] text-[var(--neutral-900)]',
+        outline: 'border border-[var(--neutral-200)] bg-white hover:bg-[var(--neutral-100)] text-[var(--neutral-900)]',
         secondary: 'bg-[var(--neutral-100)] text-[var(--neutral-900)] hover:bg-[var(--neutral-200)]',
         link: 'text-[var(--primary-main)] underline-offset-4 hover:underline'
       },
