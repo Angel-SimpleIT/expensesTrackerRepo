@@ -235,7 +235,7 @@ export function Dashboard() {
             Bienvenido, {profile?.name || "Usuario"}
           </h2>
           <p className="text-[var(--font-body-size)] text-[var(--neutral-500)]">
-            Total del período:{" "}
+            Gastos del período:{" "}
             <span className="font-semibold text-[var(--neutral-900)]">
               ${totalSpend.toLocaleString("es-AR", { minimumFractionDigits: 2 })}
             </span>
@@ -293,7 +293,17 @@ export function Dashboard() {
                 <button
                   onClick={() => {
                     if (customFrom && customTo) {
-                      setCustomDates(new Date(customFrom), new Date(customTo));
+                      const fromDate = new Date(customFrom);
+                      const toDate = new Date(customTo);
+
+                      const diffInYears = (toDate.getTime() - fromDate.getTime()) / (1000 * 60 * 60 * 24 * 365);
+
+                      if (diffInYears > 5) {
+                        alert("El rango de fechas no puede superar los 5 años.");
+                        return;
+                      }
+
+                      setCustomDates(fromDate, toDate);
                     }
                   }}
                   className="text-sm font-medium text-[var(--primary-main)] hover:underline"

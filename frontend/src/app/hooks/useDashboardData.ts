@@ -1,28 +1,32 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../../utils/supabase';
 import { useAuth } from '../contexts/AuthContext';
-import { format } from 'date-fns';
+import {
+    format,
+    differenceInDays,
+    differenceInMonths,
+    startOfWeek,
+    startOfMonth,
+    startOfYear,
+    eachDayOfInterval,
+    eachWeekOfInterval,
+    eachMonthOfInterval,
+    eachYearOfInterval
+} from 'date-fns';
+import { es } from 'date-fns/locale';
 import type { DashboardFilters } from './useDashboardFilters';
 
 export interface DashboardTransaction {
     id: string;
-    user_id: string;
-    raw_text: string | null;
     amount_original: number;
-    currency_original: string;
-    amount_base: number | null;
-    amount_usd: number | null;
-    category_id: string | null;
     category_name: string;
     category_icon: string;
-    merchant_name: string | null;
-    is_ai_confirmed: boolean;
     created_at: string;
 }
 
 export interface ChartDataPoint {
-    date: string;        // 'yyyy-MM-dd'
-    dateLabel: string;   // 'dd/MM' for display
+    date: string;        // Identifier for the period
+    dateLabel: string;   // Display label
     total: number;
     dominantCategory: string;
 }
@@ -49,6 +53,18 @@ export interface CategorySummary {
     transactionCount: number;
 }
 
+type Granularity = 'day' | 'week' | 'month' | 'year';
+
+function getGranularity(start: Date, end: Date): Granularity {
+    const days = differenceInDays(end, start);
+    const months = differenceInMonths(end, start);
+
+    if (days <= 60) return 'day';
+    if (months <= 6) return 'week';
+    if (months <= 24) return 'month';
+    return 'year';
+}
+
 export function useDashboardData(filters: DashboardFilters) {
     const { user } = useAuth();
     const [transactions, setTransactions] = useState<DashboardTransaction[]>([]);
@@ -73,15 +89,19 @@ export function useDashboardData(filters: DashboardFilters) {
 
         try {
             // Build query with filters
+            // Optimized query: selecting only necessary fields
             let query = supabase
                 .from('transactions')
                 .select(`
-          *,
-          categories (
-            name,
-            icon
-          )
-        `)
+                    id,
+                    created_at,
+                    amount_original,
+                    category_id,
+                    categories (
+                        name,
+                        icon
+                    )
+                `)
                 .eq('user_id', user.id)
                 .gte('created_at', filters.dateFrom.toISOString())
                 .lte('created_at', filters.dateTo.toISOString())
@@ -113,17 +133,9 @@ export function useDashboardData(filters: DashboardFilters) {
             // Format transactions
             const formatted: DashboardTransaction[] = (data || []).map((t: any) => ({
                 id: t.id,
-                user_id: t.user_id,
-                raw_text: t.raw_text,
                 amount_original: parseFloat(t.amount_original),
-                currency_original: t.currency_original,
-                amount_base: t.amount_base ? parseFloat(t.amount_base) : null,
-                amount_usd: t.amount_usd ? parseFloat(t.amount_usd) : null,
-                category_id: t.category_id,
                 category_name: t.categories?.name || 'Sin categoría',
                 category_icon: t.categories?.icon || 'circle',
-                merchant_name: t.merchant_name,
-                is_ai_confirmed: t.is_ai_confirmed,
                 created_at: t.created_at,
             }));
 
@@ -133,33 +145,87 @@ export function useDashboardData(filters: DashboardFilters) {
             const total = formatted.reduce((sum, t) => sum + t.amount_original, 0);
             setTotalSpend(total);
 
-            // ─── Build chart data: aggregate by day ───
-            const dailyMap = new Map<string, { total: number; categories: Map<string, number> }>();
+            // ─── Build chart data: aggregate based on granularity ───
+            const granularity = getGranularity(filters.dateFrom, filters.dateTo);
+            const dataMap = new Map<string, { total: number; categories: Map<string, number>; label: string; sortDate: Date }>();
 
-            // Initialize all days in range
-            const current = new Date(filters.dateFrom);
-            const end = new Date(filters.dateTo);
-            while (current <= end) {
-                const key = format(current, 'yyyy-MM-dd');
-                dailyMap.set(key, { total: 0, categories: new Map() });
-                current.setDate(current.getDate() + 1);
+            let intervals: Date[];
+            const intervalOptions = { locale: es };
+
+            // Generate all intervals
+            switch (granularity) {
+                case 'day':
+                    intervals = eachDayOfInterval({ start: filters.dateFrom, end: filters.dateTo });
+                    break;
+                case 'week':
+                    intervals = eachWeekOfInterval({ start: filters.dateFrom, end: filters.dateTo }, { weekStartsOn: 1 }); // Monday start
+                    break;
+                case 'month':
+                    intervals = eachMonthOfInterval({ start: filters.dateFrom, end: filters.dateTo });
+                    break;
+                case 'year':
+                    intervals = eachYearOfInterval({ start: filters.dateFrom, end: filters.dateTo });
+                    break;
             }
 
-            // Aggregate transactions by day
+            // Initialize buckets
+            intervals.forEach(date => {
+                let key: string;
+                let label: string;
+
+                // Format key and label based on granularity
+                if (granularity === 'day') {
+                    key = format(date, 'yyyy-MM-dd');
+                    label = format(date, 'dd/MM', { locale: es });
+                } else if (granularity === 'week') {
+                    key = format(date, 'yyyy-ww');
+                    label = `Sem ${format(date, 'dd/MM', { locale: es })}`;
+                } else if (granularity === 'month') {
+                    key = format(date, 'yyyy-MM');
+                    label = format(date, 'MMM yyyy', { locale: es });
+                } else {
+                    key = format(date, 'yyyy');
+                    label = format(date, 'yyyy');
+                }
+
+                dataMap.set(key, { total: 0, categories: new Map(), label, sortDate: date });
+            });
+
+            // Aggregate transactions
             formatted.forEach((t) => {
-                const dayKey = format(new Date(t.created_at), 'yyyy-MM-dd');
-                const dayData = dailyMap.get(dayKey);
-                if (dayData) {
-                    dayData.total += t.amount_original;
-                    const catTotal = dayData.categories.get(t.category_name) || 0;
-                    dayData.categories.set(t.category_name, catTotal + t.amount_original);
+                const tDate = new Date(t.created_at);
+                let key: string = '';
+
+                if (granularity === 'day') {
+                    key = format(tDate, 'yyyy-MM-dd');
+                } else if (granularity === 'week') {
+                    key = format(startOfWeek(tDate, { weekStartsOn: 1 }), 'yyyy-ww');
+                } else if (granularity === 'month') {
+                    key = format(startOfMonth(tDate), 'yyyy-MM');
+                } else {
+                    key = format(startOfYear(tDate), 'yyyy');
+                }
+
+                // If transaction date is within range but bucket missing (e.g. edge cases due to time), find closest or ignore?
+                // The buckets are generated from filters.dateFrom/To.
+                // t.created_at should be within that range due to query.
+                // However, exact match depends on keys.
+
+                // Let's rely on dataMap.get(key). If undefined, it might be slightly out of generated intervals 
+                // (e.g. time differences on first/last day). 
+                // For simplicity and robustness, we can try to re-generate key safely or just use if exists.
+                if (dataMap.has(key)) {
+                    const bucket = dataMap.get(key)!;
+                    bucket.total += t.amount_original;
+                    const catTotal = bucket.categories.get(t.category_name) || 0;
+                    bucket.categories.set(t.category_name, catTotal + t.amount_original);
                 }
             });
 
             // Convert to array
-            const chart: ChartDataPoint[] = Array.from(dailyMap.entries())
-                .sort(([a], [b]) => a.localeCompare(b))
-                .map(([date, data]) => {
+            const chart: ChartDataPoint[] = Array.from(dataMap.values())
+                .sort((a, b) => a.sortDate.getTime() - b.sortDate.getTime())
+                .map((data) => {
                     // Find dominant category
                     let dominant = 'Sin gastos';
                     let maxAmount = 0;
@@ -171,8 +237,8 @@ export function useDashboardData(filters: DashboardFilters) {
                     });
 
                     return {
-                        date,
-                        dateLabel: format(new Date(date), 'dd/MM'),
+                        date: format(data.sortDate, 'yyyy-MM-dd'),
+                        dateLabel: data.label,
                         total: Math.round(data.total * 100) / 100,
                         dominantCategory: dominant,
                     };
