@@ -36,6 +36,7 @@ import { useAuth } from "../contexts/AuthContext";
 import { useDashboardFilters, type DateRangePreset } from "../hooks/useDashboardFilters";
 import { useDashboardData, type CategorySummary } from "../hooks/useDashboardData";
 import { useCategories } from "../hooks/useData";
+import { useCurrency } from "../contexts/CurrencyContext";
 import { Button } from "../components/ui/button";
 import { Card } from "../components/ui/card";
 import { Slider } from "../components/ui/slider";
@@ -67,6 +68,7 @@ const DATE_PRESETS: { value: DateRangePreset; label: string }[] = [
 
 // ─── Custom Tooltip for the Chart ───
 function ChartTooltipContent({ active, payload, label, hoveredCategory }: any) {
+  const { formatMoney } = useCurrency();
   if (!active || !payload?.length) return null;
   const data = payload[0].payload;
 
@@ -95,7 +97,7 @@ function ChartTooltipContent({ active, payload, label, hoveredCategory }: any) {
         <div className="flex flex-col">
           <span className="text-xs text-[#6B7280] mb-0.5">{activeItem.name}</span>
           <span className="text-lg font-medium text-[#111827]">
-            ${Number(activeItem.value).toLocaleString("es-AR", { minimumFractionDigits: 2 })}
+            {formatMoney(Number(activeItem.value))}
           </span>
         </div>
       ) : (
@@ -103,7 +105,7 @@ function ChartTooltipContent({ active, payload, label, hoveredCategory }: any) {
           <div className="pb-2 border-b border-[#F3F4F6]">
             <span className="text-xs text-[#6B7280] block mb-0.5">Total Gastado</span>
             <span className="text-lg font-bold text-[#111827]">
-              ${data.total.toLocaleString("es-AR", { minimumFractionDigits: 2 })}
+              {formatMoney(data.total)}
             </span>
           </div>
 
@@ -112,7 +114,7 @@ function ChartTooltipContent({ active, payload, label, hoveredCategory }: any) {
               <div key={i} className="flex items-center justify-between gap-4">
                 <span className="text-[11px] text-[#4B5563] truncate">{cat.name}</span>
                 <span className="text-[11px] font-medium text-[#111827] shrink-0">
-                  ${cat.amount.toLocaleString("es-AR", { minimumFractionDigits: 0 })}
+                  {formatMoney(cat.amount)}
                 </span>
               </div>
             ))}
@@ -194,6 +196,7 @@ function CategoryDropdown({
 
 // ─── Category Chip (compact icon) ───
 function CategoryChip({ item }: { item: CategorySummary }) {
+  const { formatMoney } = useCurrency();
   const Icon = getIcon(item.icon);
   return (
     <div className="flex flex-col items-center gap-1.5 flex-1 min-w-[72px] max-w-[140px] py-3 px-2 rounded-[var(--radius-md)] hover:bg-[var(--neutral-50)] transition-colors cursor-default group">
@@ -207,7 +210,7 @@ function CategoryChip({ item }: { item: CategorySummary }) {
         {item.name}
       </span>
       <span className="text-[11px] font-semibold text-[var(--neutral-900)]">
-        ${item.amount.toLocaleString("es-AR", { minimumFractionDigits: 0 })}
+        {formatMoney(item.amount)}
       </span>
       <span className="text-[10px] text-[var(--neutral-400)]">
         {item.percentage}%
@@ -221,6 +224,7 @@ function CategoryChip({ item }: { item: CategorySummary }) {
 // ═══════════════════════════════════════
 export function Dashboard() {
   const { profile } = useAuth();
+  const { homeCurrency, formatMoney } = useCurrency();
   const { categories } = useCategories();
   const {
     filters,
@@ -242,8 +246,6 @@ export function Dashboard() {
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [customFrom, setCustomFrom] = useState("");
   const [customTo, setCustomTo] = useState("");
-
-  const homeCurrency = profile?.home_currency || "USD";
 
   const hasActiveFilters =
     filters.categoryIds.length > 0 ||
@@ -273,7 +275,7 @@ export function Dashboard() {
           <p className="text-[var(--font-body-size)] text-[var(--neutral-500)]">
             Gastos del período:{" "}
             <span className="font-semibold text-[var(--neutral-900)]">
-              ${totalSpend.toLocaleString("es-AR", { minimumFractionDigits: 2 })}
+              {formatMoney(totalSpend)}
             </span>
             <span className="text-[var(--font-caption-size)] text-[var(--neutral-400)] ml-1">
               {homeCurrency}
@@ -403,8 +405,8 @@ export function Dashboard() {
                 className="w-full"
               />
               <div className="flex justify-between mt-1">
-                <span className="text-xs text-[var(--neutral-400)]">$0</span>
-                <span className="text-xs text-[var(--neutral-400)]">$5.000+</span>
+                <span className="text-xs text-[var(--neutral-400)]">{formatMoney(0)}</span>
+                <span className="text-xs text-[var(--neutral-400)]">{formatMoney(5000)}+</span>
               </div>
             </div>
           )}
@@ -458,7 +460,7 @@ export function Dashboard() {
                   style={{ fontSize: "12px" }}
                   axisLine={false}
                   tickLine={false}
-                  tickFormatter={(v: number) => `$${v.toLocaleString('es-AR')}`}
+                  tickFormatter={(v: number) => formatMoney(v)}
                   width={85}
                 />
                 <RechartsTooltip

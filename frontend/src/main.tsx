@@ -2,6 +2,7 @@ import { createRoot } from "react-dom/client";
 import App from "./app/App.tsx";
 import "./styles/index.css";
 import { AuthProvider } from "./app/contexts/AuthContext";
+import { CurrencyProvider } from "./app/contexts/CurrencyContext";
 
 // Suppress "AbortError" unhandled rejections from Supabase/React StrictMode
 window.addEventListener('unhandledrejection', (event) => {
@@ -12,6 +13,8 @@ window.addEventListener('unhandledrejection', (event) => {
 
 createRoot(document.getElementById("root")!).render(
   <AuthProvider>
-    <App />
+    <CurrencyProvider>
+      <App />
+    </CurrencyProvider>
   </AuthProvider>
 );

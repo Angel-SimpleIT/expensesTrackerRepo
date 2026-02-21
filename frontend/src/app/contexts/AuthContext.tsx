@@ -46,6 +46,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         role: data.role as UserRole,
         name: data.full_name || '',
         created_at: data.created_at,
+        home_currency: data.home_currency,
         bot_user_id: data.bot_user_id,
         pairing_code: data.pairing_code,
       } as Profile;
@@ -161,6 +162,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (updates.name !== undefined) dbUpdates.full_name = updates.name;
     if (updates.bot_user_id !== undefined) dbUpdates.bot_user_id = updates.bot_user_id;
     if (updates.pairing_code !== undefined) dbUpdates.pairing_code = updates.pairing_code;
+    if (updates.home_currency !== undefined) dbUpdates.home_currency = updates.home_currency;
 
     const { error } = await supabase
       .from('profiles')
