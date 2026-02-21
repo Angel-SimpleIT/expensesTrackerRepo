@@ -14,8 +14,15 @@ import {
   Film,
   TrendingUp,
   TrendingDown,
-  Calendar as CalendarIcon
+  Calendar as CalendarIcon,
+  ChevronDown
 } from "lucide-react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+} from "./ui/select";
 
 interface Transaction {
   id: string;
@@ -26,6 +33,7 @@ interface Transaction {
   categoryIcon: string;
   categoryColor: string;
   amount: number;
+  currency: string;
   type: "income" | "expense";
   originalText: string;
   date: string;
@@ -42,7 +50,7 @@ interface EditTransactionModalProps {
   transaction: Transaction;
   categories: Category[];
   onClose: () => void;
-  onSave: (transaction: Transaction) => void;
+  onSave: (transaction: Transaction & { currency?: string }) => void;
   onDelete: (id: string) => void;
 }
 
@@ -63,6 +71,7 @@ const DEFAULT_COLOR = '#6B7280';
 
 export function EditTransactionModal({ transaction, categories, onClose, onSave, onDelete }: EditTransactionModalProps) {
   const [amount, setAmount] = useState(transaction.amount.toString());
+  const [selectedCurrency, setSelectedCurrency] = useState(transaction.currency || "USD");
   const [selectedCategoryId, setSelectedCategoryId] = useState(transaction.category_id || "");
   const [date, setDate] = useState(transaction.date);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -95,9 +104,10 @@ export function EditTransactionModal({ transaction, categories, onClose, onSave,
     const selectedCategory = categories.find(c => c.id === selectedCategoryId);
     if (!amount) return;
 
-    const updatedTransaction: Transaction = {
+    const updatedTransaction: Transaction & { currency: string } = {
       ...transaction,
       amount: parseFloat(amount),
+      currency: selectedCurrency,
       category: selectedCategory?.name || transaction.category,
       category_id: selectedCategoryId,
       categoryIcon: selectedCategory?.icon || transaction.categoryIcon,
@@ -163,16 +173,32 @@ export function EditTransactionModal({ transaction, categories, onClose, onSave,
               <label className="block text-sm font-medium text-[#09090b] mb-3">
                 Monto
               </label>
-              <div className="relative">
-                <span className="absolute left-5 top-1/2 -translate-y-1/2 text-2xl font-bold text-[#6B7280]">
-                  €
-                </span>
+              <div className="flex items-center gap-2">
+                <Select
+                  value={selectedCurrency}
+                  onValueChange={setSelectedCurrency}
+                >
+                  <SelectTrigger className="w-auto h-auto p-3 pr-4 border border-[#E5E7EB] bg-[#F9FAFB] hover:bg-[#F3F4F6] focus:ring-0 rounded-2xl transition-all flex items-center gap-1.5 [&_svg]:hidden group">
+                    <span className="text-xl font-bold text-[#4B5563]">
+                      {selectedCurrency}
+                    </span>
+                    <ChevronDown className="w-4 h-4 text-[#9CA3AF] group-hover:text-[#6B7280] transition-colors translate-y-0.5" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-white border-[#E5E7EB] shadow-lg">
+                    <SelectItem value="USD">USD ($)</SelectItem>
+                    <SelectItem value="EUR">EUR (€)</SelectItem>
+                    <SelectItem value="PYG">PYG (Gs)</SelectItem>
+                    <SelectItem value="UYU">UYU ($U)</SelectItem>
+                    <SelectItem value="ARS">ARS ($)</SelectItem>
+                    <SelectItem value="MXN">MXN ($)</SelectItem>
+                  </SelectContent>
+                </Select>
                 <input
                   type="text"
                   inputMode="decimal"
                   value={amount}
                   onChange={(e) => handleAmountChange(e.target.value)}
-                  className="w-full pl-12 pr-5 py-4 text-2xl font-bold text-[#09090b] bg-[#F9FAFB] border border-[#E5E7EB] rounded-2xl focus:outline-none focus:ring-2 focus:ring-[#4F46E5] focus:border-transparent"
+                  className="flex-1 px-5 py-4 text-2xl font-bold text-[#09090b] bg-[#F9FAFB] border border-[#E5E7EB] rounded-2xl focus:outline-none focus:ring-2 focus:ring-[#4F46E5] focus:border-transparent"
                 />
               </div>
             </div>

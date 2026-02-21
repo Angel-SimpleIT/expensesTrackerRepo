@@ -161,10 +161,54 @@ export function useTransactions(options: UseTransactionsOptions = {}) {
         totalPages: Math.ceil(totalCount / pageSize),
         refresh: () => fetchTransactions(false),
         updateTransaction: async (id: string, updates: Partial<Transaction>) => {
+            const { error: fError, data: existingData } = await supabase
+                .from('transactions')
+                .select('amount_original, currency_original, amount_base, amount_usd')
+                .eq('id', id)
+                .single();
+
+            if (fError) {
+                console.error('Error fetching existing transaction for update:', fError);
+                return { error: fError };
+            }
+
+            let amountBase = existingData.amount_base;
+            let amountUsd = existingData.amount_usd;
+
+            const amountChanged = updates.amount_original !== undefined && updates.amount_original !== parseFloat(existingData.amount_original);
+            const currencyChanged = updates.currency_original !== undefined && updates.currency_original !== existingData.currency_original;
+
+            if (amountChanged || currencyChanged) {
+                const { fetchExchangeRates, convertCurrency } = await import('../../utils/currency');
+                const ratesData = await fetchExchangeRates();
+                const currency = updates.currency_original || existingData.currency_original;
+                const newAmount = updates.amount_original !== undefined ? updates.amount_original : parseFloat(existingData.amount_original);
+
+                if (ratesData) {
+                    // We need homeCurrency here. Since useData hook doesn't have it directly, 
+                    // we might need to fetch it from the profile or assume USD for base if unknown, 
+                    // but better to fetch it if possible. 
+                    // For now, let's just use what's in the profile if we can.
+                    const { data: profile } = await supabase
+                        .from('profiles')
+                        .select('home_currency')
+                        .eq('id', userId)
+                        .single();
+
+                    const homeCurrency = profile?.home_currency || 'USD';
+
+                    amountBase = convertCurrency(newAmount, currency, homeCurrency, ratesData.rates);
+                    amountUsd = convertCurrency(newAmount, currency, 'USD', ratesData.rates);
+                }
+            }
+
             const { error } = await supabase
                 .from('transactions')
                 .update({
                     amount_original: updates.amount_original,
+                    currency_original: updates.currency_original,
+                    amount_base: amountBase,
+                    amount_usd: amountUsd,
                     category_id: updates.category_id,
                     created_at: updates.created_at,
                     merchant_name: updates.merchant_name,

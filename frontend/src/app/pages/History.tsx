@@ -151,6 +151,7 @@ export function History() {
   const handleSave = async (updatedTransaction: any) => {
     const { error } = await updateTransaction(updatedTransaction.id, {
       amount_original: updatedTransaction.amount,
+      currency_original: updatedTransaction.currency,
       category_id: updatedTransaction.category_id,
       created_at: new Date(updatedTransaction.date).toISOString(),
     });
@@ -199,8 +200,16 @@ export function History() {
       <main className="max-w-5xl mx-auto px-4 py-8 sm:px-8">
         {/* Page Title */}
         <div className="mb-6">
-          <h1 className="text-2xl font-bold text-[#09090b] mb-1">Historial de Transacciones</h1>
-          <p className="text-sm text-[#6B7280]">Revisa y edita tus movimientos</p>
+          <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-2">
+            <div>
+              <h1 className="text-2xl font-bold text-[#09090b] mb-1">Historial de Transacciones</h1>
+              <p className="text-sm text-[#6B7280]">Revisa y edita tus movimientos</p>
+            </div>
+            <div className="flex items-center gap-2 px-4 py-2 bg-[#F3F4F6] rounded-xl border border-[#E5E7EB]">
+              <span className="text-xs font-medium text-[#6B7280]">Moneda base:</span>
+              <span className="text-sm font-bold text-[#4F46E5]">{homeCurrency}</span>
+            </div>
+          </div>
         </div>
 
         {/* Search and Filter Bar */}
@@ -291,6 +300,7 @@ export function History() {
                       categoryIcon: transaction.category_icon || 'circle',
                       categoryColor,
                       amount: transaction.amount_original,
+                      currency: transaction.currency_original,
                       type: 'expense' as const,
                       originalText: transaction.raw_text || '',
                       date: transaction.created_at.split('T')[0],
@@ -343,7 +353,7 @@ export function History() {
                           {formatMoney(transaction.amount_base || transaction.amount_original)}
                           {transaction.currency_original !== homeCurrency && (
                             <span className="ml-2 text-xs font-normal text-[#9CA3AF]">
-                              ({transaction.amount_original}{getCurrencySymbol(transaction.currency_original)})
+                              ({transaction.amount_original.toFixed(2)} {transaction.currency_original})
                             </span>
                           )}
                         </p>

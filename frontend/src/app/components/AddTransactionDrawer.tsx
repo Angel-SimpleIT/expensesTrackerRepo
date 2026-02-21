@@ -109,17 +109,29 @@ export function AddTransactionDrawer({ isOpen, onClose, categories }: AddTransac
     try {
       const numAmount = parseFloat(amount);
 
-      // Fetch rates and calculate base amount (home_currency)
+      // Fetch rates and calculate base amount (home_currency) and USD amount
       const ratesData = await fetchExchangeRates();
       let amountBase = numAmount;
+      let amountUsd = numAmount;
 
-      if (ratesData && selectedCurrency !== homeCurrency) {
-        amountBase = convertCurrency(
-          numAmount,
-          selectedCurrency,
-          homeCurrency,
-          ratesData.rates
-        );
+      if (ratesData) {
+        if (selectedCurrency !== homeCurrency) {
+          amountBase = convertCurrency(
+            numAmount,
+            selectedCurrency,
+            homeCurrency,
+            ratesData.rates
+          );
+        }
+
+        if (selectedCurrency !== 'USD') {
+          amountUsd = convertCurrency(
+            numAmount,
+            selectedCurrency,
+            'USD',
+            ratesData.rates
+          );
+        }
       }
 
       const { error } = await supabase
@@ -128,6 +140,7 @@ export function AddTransactionDrawer({ isOpen, onClose, categories }: AddTransac
           user_id: user.id,
           amount_original: numAmount,
           amount_base: amountBase,
+          amount_usd: amountUsd,
           currency_original: selectedCurrency,
           category_id: selectedCategory,
           is_ai_confirmed: true,
