@@ -21,8 +21,8 @@ import {
   SlidersHorizontal,
 } from "lucide-react";
 import {
-  AreaChart,
-  Area,
+  BarChart,
+  Bar,
   XAxis,
   YAxis,
   CartesianGrid,
@@ -39,6 +39,8 @@ import { useCategories } from "../hooks/useData";
 import { Button } from "../components/ui/button";
 import { Card } from "../components/ui/card";
 import { Slider } from "../components/ui/slider";
+import { Switch } from "../components/ui/switch";
+import { Label } from "../components/ui/label";
 
 // ─── Icon Resolver ───
 const ICON_MAP: Record<string, any> = {
@@ -64,27 +66,59 @@ const DATE_PRESETS: { value: DateRangePreset; label: string }[] = [
 ];
 
 // ─── Custom Tooltip for the Chart ───
-function ChartTooltipContent({ active, payload, label }: any) {
+function ChartTooltipContent({ active, payload, label, hoveredCategory }: any) {
   if (!active || !payload?.length) return null;
   const data = payload[0].payload;
+
+  // Extract categories for breakdown
+  const categories = Object.keys(data)
+    .filter(key => key !== 'date' && key !== 'dateLabel' && key !== 'total' && typeof data[key] === 'number' && data[key] > 0)
+    .map(key => ({ name: key, amount: data[key] }))
+    .sort((a, b) => b.amount - a.amount);
+
+  // If we are hovering a specific category (focus mode), only show that one.
+  const isFocusMode = hoveredCategory && hoveredCategory !== 'total';
+  const activeItem = isFocusMode
+    ? payload.find((p: any) => p.dataKey === hoveredCategory)
+    : null;
+
   return (
     <div
-      className="bg-white border border-[var(--neutral-200)] rounded-[var(--radius-md)] p-3 shadow-[var(--shadow-float)]"
-      style={{ minWidth: 160 }}
+      className="bg-white border border-[#E5E7EB] rounded-lg p-3 shadow-lg"
+      style={{ minWidth: 180, fontFamily: "'Inter', sans-serif" }}
     >
-      <p className="text-sm font-semibold text-[var(--neutral-900)] mb-1">{label}</p>
-      <p className="text-2xl font-bold text-[var(--primary-main)]">
-        ${data.total.toLocaleString("es-AR", { minimumFractionDigits: 2 })}
+      <p className="text-[10px] uppercase tracking-wider text-[#9CA3AF] font-bold mb-2">
+        {label}
       </p>
-      <div className="flex items-center gap-1.5 mt-2">
-        <div
-          className="w-2.5 h-2.5 rounded-full"
-          style={{ backgroundColor: data.dominantCategory === "Sin gastos" ? "var(--neutral-300)" : "var(--primary-main)" }}
-        />
-        <span className="text-xs text-[var(--neutral-500)]">
-          {data.dominantCategory}
-        </span>
-      </div>
+
+      {isFocusMode && activeItem ? (
+        <div className="flex flex-col">
+          <span className="text-xs text-[#6B7280] mb-0.5">{activeItem.name}</span>
+          <span className="text-lg font-medium text-[#111827]">
+            ${Number(activeItem.value).toLocaleString("es-AR", { minimumFractionDigits: 2 })}
+          </span>
+        </div>
+      ) : (
+        <div className="flex flex-col gap-2">
+          <div className="pb-2 border-b border-[#F3F4F6]">
+            <span className="text-xs text-[#6B7280] block mb-0.5">Total Gastado</span>
+            <span className="text-lg font-bold text-[#111827]">
+              ${data.total.toLocaleString("es-AR", { minimumFractionDigits: 2 })}
+            </span>
+          </div>
+
+          <div className="space-y-1.5 pt-1">
+            {categories.map((cat, i) => (
+              <div key={i} className="flex items-center justify-between gap-4">
+                <span className="text-[11px] text-[#4B5563] truncate">{cat.name}</span>
+                <span className="text-[11px] font-medium text-[#111827] shrink-0">
+                  ${cat.amount.toLocaleString("es-AR", { minimumFractionDigits: 0 })}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -201,6 +235,8 @@ export function Dashboard() {
     useDashboardData(filters);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [showAmountSlider, setShowAmountSlider] = useState(false);
+  const [viewMode, setViewMode] = useState<'total' | 'breakdown'>('total');
+  const [hoveredCategory, setHoveredCategory] = useState<string | null>(null);
 
   // Custom date picker state
   const [showDatePicker, setShowDatePicker] = useState(false);
@@ -376,7 +412,7 @@ export function Dashboard() {
 
         {/* ─── Area Chart ─── */}
         <Card className="p-4 sm:p-6 mb-6">
-          <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center justify-between mb-6">
             <div>
               <h3 className="text-lg font-semibold text-[var(--neutral-900)]">
                 Evolución de Gastos
@@ -386,6 +422,16 @@ export function Dashboard() {
                 {format(filters.dateTo, "d MMM yyyy", { locale: es })}
               </p>
             </div>
+            <div className="flex items-center space-x-2 bg-[var(--neutral-50)] p-1.5 rounded-lg border border-[var(--neutral-100)]">
+              <Label htmlFor="view-mode" className="text-xs font-medium text-[var(--neutral-500)]">
+                Ver Desglose
+              </Label>
+              <Switch
+                id="view-mode"
+                checked={viewMode === 'breakdown'}
+                onCheckedChange={(checked) => setViewMode(checked ? 'breakdown' : 'total')}
+              />
+            </div>
           </div>
 
           {chartData.length === 0 ? (
@@ -394,13 +440,7 @@ export function Dashboard() {
             </div>
           ) : (
             <ResponsiveContainer width="100%" height={280} className="!h-[200px] sm:!h-[280px]">
-              <AreaChart data={chartData}>
-                <defs>
-                  <linearGradient id="colorTotal" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="var(--primary-light)" stopOpacity={0.18} />
-                    <stop offset="95%" stopColor="var(--primary-light)" stopOpacity={0} />
-                  </linearGradient>
-                </defs>
+              <BarChart data={chartData} margin={{ top: 10, right: 10, left: 20, bottom: 0 }}>
                 <CartesianGrid
                   strokeDasharray="3 3"
                   stroke="var(--neutral-200)"
@@ -418,25 +458,39 @@ export function Dashboard() {
                   style={{ fontSize: "12px" }}
                   axisLine={false}
                   tickLine={false}
-                  tickFormatter={(v: number) => `$${v}`}
-                  width={50}
+                  tickFormatter={(v: number) => `$${v.toLocaleString('es-AR')}`}
+                  width={85}
                 />
-                <RechartsTooltip content={<ChartTooltipContent />} />
-                <Area
-                  type="monotone"
-                  dataKey="total"
-                  stroke="var(--primary-main)"
-                  strokeWidth={2.5}
-                  fill="url(#colorTotal)"
-                  dot={false}
-                  activeDot={{
-                    r: 6,
-                    fill: "var(--primary-main)",
-                    stroke: "#fff",
-                    strokeWidth: 2,
-                  }}
+                <RechartsTooltip
+                  content={<ChartTooltipContent hoveredCategory={hoveredCategory} />}
+                  cursor={{ fill: 'var(--neutral-100)', opacity: 0.4 }}
                 />
-              </AreaChart>
+
+                {viewMode === 'total' ? (
+                  <Bar
+                    dataKey="total"
+                    fill="var(--primary-main)"
+                    radius={[6, 6, 0, 0]}
+                    maxBarSize={45}
+                    onMouseEnter={() => setHoveredCategory('total')}
+                    onMouseLeave={() => setHoveredCategory(null)}
+                  />
+                ) : (
+                  categorySummary.map((cat, i) => (
+                    <Bar
+                      key={cat.name}
+                      dataKey={cat.name}
+                      stackId="a"
+                      fill={cat.color}
+                      radius={i === categorySummary.length - 1 ? [6, 6, 0, 0] : [0, 0, 0, 0]}
+                      maxBarSize={45}
+                      opacity={!hoveredCategory || hoveredCategory === cat.name ? 1 : 0.4}
+                      onMouseEnter={() => setHoveredCategory(cat.name)}
+                      onMouseLeave={() => setHoveredCategory(null)}
+                    />
+                  ))
+                )}
+              </BarChart>
             </ResponsiveContainer>
           )}
         </Card>

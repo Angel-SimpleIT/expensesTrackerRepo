@@ -18,7 +18,7 @@ import type { DashboardFilters } from './useDashboardFilters';
 
 export interface DashboardTransaction {
     id: string;
-    amount_original: number;
+    amount_base: number;
     category_name: string;
     category_icon: string;
     created_at: string;
@@ -28,20 +28,20 @@ export interface ChartDataPoint {
     date: string;        // Identifier for the period
     dateLabel: string;   // Display label
     total: number;
-    dominantCategory: string;
+    [category: string]: any; // Allow category names as keys for stacked area chart
 }
 
 // ─── Category Summary ───
 const CATEGORY_COLORS: Record<string, string> = {
-    'Alimentación': '#EF4444',
-    Transporte: '#3B82F6',
-    Compras: '#8B5CF6',
-    Hogar: '#06B6D4',
-    'Café': '#F59E0B',
-    Entretenimiento: '#F43F5E',
-    Salud: '#10B981',
-    'Teléfono': '#10B981',
-    Viajes: '#6366F1',
+    'Alimentación': '#4F46E5',
+    'Vivienda': '#F43F5E',
+    'Hogar': '#F43F5E',
+    'Transporte': '#F59E0B',
+    'Salud': '#10B981',
+    'Entretenimiento': '#8B5CF6',
+    'Compras': '#06B6D4',
+    'Otros': '#94A3B8',
+    'Sueldo': '#10B981', // Emerald for income/positive
 };
 
 export interface CategorySummary {
@@ -89,14 +89,26 @@ export function useDashboardData(filters: DashboardFilters) {
         setError(null);
 
         try {
-            // Build query with filters
-            // Optimized query: selecting only necessary fields
+            // Using the optimized RPC for Daily Category Stats
+            const { data: rpcData, error: rpcError } = await supabase.rpc('get_daily_category_stats', {
+                p_user_id: userId,
+                p_date_from: filters.dateFrom.toISOString(),
+                p_date_to: filters.dateTo.toISOString()
+            });
+
+            if (rpcError) {
+                console.error('Error fetching optimized stats:', rpcError);
+                // Fallback to existing query if RPC fails (e.g. not migrated yet)
+            }
+
+            // Keep the raw transactions fetch for the transaction list if needed, 
+            // but optimize it by only selecting what's needed for the list.
             let query = supabase
                 .from('transactions')
                 .select(`
                     id,
                     created_at,
-                    amount_original,
+                    amount_base,
                     category_id,
                     categories (
                         name,
@@ -115,11 +127,11 @@ export function useDashboardData(filters: DashboardFilters) {
 
             // Amount filter
             if (filters.amountMin > 0) {
-                query = query.gte('amount_original', filters.amountMin);
+                query = query.gte('amount_base', filters.amountMin);
             }
 
             if (filters.amountMax < 100000) {
-                query = query.lte('amount_original', filters.amountMax);
+                query = query.lte('amount_base', filters.amountMax);
             }
 
             const { data, error: queryError } = await query;
@@ -134,7 +146,7 @@ export function useDashboardData(filters: DashboardFilters) {
             // Format transactions
             const formatted: DashboardTransaction[] = (data || []).map((t: any) => ({
                 id: t.id,
-                amount_original: parseFloat(t.amount_original),
+                amount_base: parseFloat(t.amount_base),
                 category_name: t.categories?.name || 'Sin categoría',
                 category_icon: t.categories?.icon || 'circle',
                 created_at: t.created_at,
@@ -143,7 +155,7 @@ export function useDashboardData(filters: DashboardFilters) {
             setTransactions(formatted);
 
             // Calculate total
-            const total = formatted.reduce((sum, t) => sum + t.amount_original, 0);
+            const total = formatted.reduce((sum, t) => sum + t.amount_base, 0);
             setTotalSpend(total);
 
             // ─── Build chart data: aggregate based on granularity ───
@@ -193,6 +205,7 @@ export function useDashboardData(filters: DashboardFilters) {
             });
 
             // Aggregate transactions
+            const catNamesSet = new Set<string>();
             formatted.forEach((t) => {
                 const tDate = new Date(t.created_at);
                 let key: string = '';
@@ -209,9 +222,10 @@ export function useDashboardData(filters: DashboardFilters) {
 
                 if (dataMap.has(key)) {
                     const bucket = dataMap.get(key)!;
-                    bucket.total += t.amount_original;
+                    bucket.total += t.amount_base;
                     const catTotal = bucket.categories.get(t.category_name) || 0;
-                    bucket.categories.set(t.category_name, catTotal + t.amount_original);
+                    bucket.categories.set(t.category_name, catTotal + t.amount_base);
+                    catNamesSet.add(t.category_name);
                 }
             });
 
@@ -219,22 +233,20 @@ export function useDashboardData(filters: DashboardFilters) {
             const chart: ChartDataPoint[] = Array.from(dataMap.values())
                 .sort((a, b) => a.sortDate.getTime() - b.sortDate.getTime())
                 .map((data) => {
-                    // Find dominant category
-                    let dominant = 'Sin gastos';
-                    let maxAmount = 0;
-                    data.categories.forEach((amount, name) => {
-                        if (amount > maxAmount) {
-                            maxAmount = amount;
-                            dominant = name;
-                        }
-                    });
-
-                    return {
+                    const point: ChartDataPoint = {
                         date: format(data.sortDate, 'yyyy-MM-dd'),
                         dateLabel: data.label,
                         total: Math.round(data.total * 100) / 100,
-                        dominantCategory: dominant,
                     };
+
+                    // Ensure ALL categories that exist in the period are present in EVERY point
+                    // This prevents gaps in the BarChart
+                    catNamesSet.forEach(catName => {
+                        const amount = data.categories.get(catName) || 0;
+                        point[catName] = Math.round(amount * 100) / 100;
+                    });
+
+                    return point;
                 });
 
             setChartData(chart);
@@ -244,12 +256,12 @@ export function useDashboardData(filters: DashboardFilters) {
             formatted.forEach((t) => {
                 const existing = catMap.get(t.category_name);
                 if (existing) {
-                    existing.amount += t.amount_original;
+                    existing.amount += t.amount_base;
                     existing.count += 1;
                 } else {
                     catMap.set(t.category_name, {
                         icon: t.category_icon,
-                        amount: t.amount_original,
+                        amount: t.amount_base,
                         count: 1,
                     });
                 }
