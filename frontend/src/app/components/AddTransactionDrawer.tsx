@@ -11,7 +11,8 @@ import {
   Heart,
   Plane,
   Film,
-  Loader2
+  Loader2,
+  ChevronDown
 } from "lucide-react";
 import { supabase } from "../../utils/supabase";
 import { useAuth } from "../contexts/AuthContext";
@@ -184,10 +185,11 @@ export function AddTransactionDrawer({ isOpen, onClose, categories }: AddTransac
                     value={selectedCurrency}
                     onValueChange={setSelectedCurrency}
                   >
-                    <SelectTrigger className="w-auto h-auto p-1 border-none bg-transparent hover:bg-[#F9FAFB] focus:ring-0 rounded-xl transition-colors [&_svg]:hidden">
-                      <span className="text-5xl font-bold text-[#09090b]">
-                        {getCurrencySymbol(selectedCurrency)}
+                    <SelectTrigger className="w-auto h-auto p-2 pr-3 border-none bg-[#F3F4F6] hover:bg-[#E5E7EB] focus:ring-0 rounded-2xl transition-all flex items-center gap-1.5 [&_svg]:hidden group">
+                      <span className="text-2xl font-bold text-[#4B5563]">
+                        {selectedCurrency}
                       </span>
+                      <ChevronDown className="w-4 h-4 text-[#9CA3AF] group-hover:text-[#6B7280] transition-colors translate-y-0.5" />
                     </SelectTrigger>
                     <SelectContent className="bg-white border-[#E5E7EB] shadow-lg">
                       <SelectItem value="USD">USD ($)</SelectItem>
