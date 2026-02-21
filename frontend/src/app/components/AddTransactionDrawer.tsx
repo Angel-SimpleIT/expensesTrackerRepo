@@ -178,11 +178,27 @@ export function AddTransactionDrawer({ isOpen, onClose, categories }: AddTransac
 
             <div className="px-6 py-8 border-b border-[#E5E7EB]">
               <p className="text-sm text-[#6B7280] mb-3 text-center">Cantidad</p>
-              <div className="flex flex-col items-center gap-4">
+              <div className="flex flex-col items-center gap-2">
                 <div className="flex items-center justify-center gap-2">
-                  <span className="text-5xl font-bold text-[#09090b]">
-                    {getCurrencySymbol(selectedCurrency)}
-                  </span>
+                  <Select
+                    value={selectedCurrency}
+                    onValueChange={setSelectedCurrency}
+                  >
+                    <SelectTrigger className="w-auto h-auto p-1 border-none bg-transparent hover:bg-[#F9FAFB] focus:ring-0 rounded-xl transition-colors [&_svg]:hidden">
+                      <span className="text-5xl font-bold text-[#09090b]">
+                        {getCurrencySymbol(selectedCurrency)}
+                      </span>
+                    </SelectTrigger>
+                    <SelectContent className="bg-white border-[#E5E7EB] shadow-lg">
+                      <SelectItem value="USD">USD ($)</SelectItem>
+                      <SelectItem value="EUR">EUR (€)</SelectItem>
+                      <SelectItem value="PYG">PYG (Gs)</SelectItem>
+                      <SelectItem value="UYU">UYU ($U)</SelectItem>
+                      <SelectItem value="ARS">ARS ($)</SelectItem>
+                      <SelectItem value="MXN">MXN ($)</SelectItem>
+                    </SelectContent>
+                  </Select>
+
                   <input
                     type="text"
                     inputMode="decimal"
@@ -193,23 +209,6 @@ export function AddTransactionDrawer({ isOpen, onClose, categories }: AddTransac
                     autoFocus
                   />
                 </div>
-
-                <Select
-                  value={selectedCurrency}
-                  onValueChange={setSelectedCurrency}
-                >
-                  <SelectTrigger className="w-24 h-8 text-xs font-semibold bg-[#F9FAFB] border-none rounded-full">
-                    <SelectValue placeholder="Moneda" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="USD">USD ($)</SelectItem>
-                    <SelectItem value="EUR">EUR (€)</SelectItem>
-                    <SelectItem value="PYG">PYG (Gs)</SelectItem>
-                    <SelectItem value="UYU">UYU ($U)</SelectItem>
-                    <SelectItem value="ARS">ARS ($)</SelectItem>
-                    <SelectItem value="MXN">MXN ($)</SelectItem>
-                  </SelectContent>
-                </Select>
               </div>
             </div>
 

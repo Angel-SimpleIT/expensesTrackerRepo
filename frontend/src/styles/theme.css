@@ -116,6 +116,11 @@
   /* Legacy/Compatibility Mappings (optional, for existing code) */
   --background: var(--bg-default);
   --foreground: var(--neutral-900);
+  --popover: var(--neutral-white);
+  --popover-foreground: var(--neutral-900);
+  --border: var(--neutral-200);
+  --input: var(--neutral-100);
+  --ring: var(--primary-main);
 }
 
 @theme inline {
@@ -152,6 +157,12 @@
   --color-error-bg: var(--error-bg);
   --color-warning-text: var(--warning-text);
   --color-warning-bg: var(--warning-bg);
+
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
 
   /* Box Shadows */
   --shadow-sm: var(--shadow-sm);
