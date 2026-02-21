@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { createContext, useContext, useState, useEffect, ReactNode, useRef } from 'react';
 import { supabase, UserRole, Profile } from '../../utils/supabase';
 import { User } from '@supabase/supabase-js';
 
@@ -58,8 +58,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const profileIdRef = useRef<string | null>(null);
+
   useEffect(() => {
+    profileIdRef.current = state.profile?.id || null;
+  }, [state.profile]);
+
+  useEffect(() => {
+    let mounted = true;
     console.log('[Auth] Subscribing to auth changes');
+
+    // Ensure we don't get stuck in a loading state if `onAuthStateChange`
+    // doesn't fire an event for unauthenticated users.
+    supabase.auth.getSession().then(({ data: { session }, error }) => {
+      if (!mounted) return;
+      if (error || !session) {
+        setState(prev => ({ ...prev, loading: false }));
+      }
+    });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       console.log(`[Auth] Event: ${event}`, { userId: session?.user?.id });
@@ -72,12 +88,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (session?.user) {
         // If it's a critical event, fetch the profile
         if (event === 'SIGNED_IN' || event === 'USER_UPDATED' || event === 'INITIAL_SESSION') {
-          // Only fetch if we don't have a profile, or the user changed, or it's an explicit USER_UPDATED
-          const needsProfileFetch = !state.profile || state.profile.id !== session.user.id || event === 'USER_UPDATED';
+          // Check against the ref to avoid dependency cycles
+          const currentProfileId = profileIdRef.current;
+          const needsProfileFetch = !currentProfileId || currentProfileId !== session.user.id || event === 'USER_UPDATED';
 
           if (needsProfileFetch) {
             setState(prev => ({ ...prev, user: session.user, loading: true }));
             const profile = await getProfileData(session.user.id);
+            if (!mounted) return;
             setState({
               user: session.user,
               profile,
@@ -86,11 +104,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             console.log('[Auth] Profile loaded', { profileId: profile?.id });
           } else {
             // Just update the user object
+            if (!mounted) return;
             setState(prev => ({ ...prev, user: session.user, loading: false }));
           }
         } else {
           // For other events (like TOKEN_REFRESHED), just update the user object
           // but don't re-trigger loading if we already have a profile.
+          if (!mounted) return;
           setState(prev => ({
             ...prev,
             user: session.user,
@@ -99,15 +119,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
       } else {
         // No session
+        if (!mounted) return;
         setState({ user: null, profile: null, loading: false });
       }
     });
 
     return () => {
+      mounted = false;
       console.log('[Auth] Unsubscribing');
       subscription.unsubscribe();
     };
-  }, [state.profile]);
+  }, []);
 
   const signIn = async (email: string, password: string): Promise<{ success: boolean; error?: string }> => {
     try {
