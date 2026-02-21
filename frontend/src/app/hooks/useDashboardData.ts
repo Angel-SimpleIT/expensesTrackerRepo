@@ -33,16 +33,46 @@ export interface ChartDataPoint {
 
 // ─── Category Summary ───
 const CATEGORY_COLORS: Record<string, string> = {
-    'Alimentación': '#4F46E5',
-    'Vivienda': '#F43F5E',
-    'Hogar': '#F43F5E',
-    'Transporte': '#F59E0B',
-    'Salud': '#10B981',
-    'Entretenimiento': '#8B5CF6',
-    'Compras': '#06B6D4',
-    'Otros': '#94A3B8',
-    'Sueldo': '#10B981', // Emerald for income/positive
+    'Alimentación': '#4F46E5',  // Indigo
+    'Vivienda': '#F43F5E',      // Rose
+    'Hogar': '#F43F5E',         // Rose
+    'Transporte': '#F59E0B',    // Amber
+    'Salud': '#10B981',         // Emerald
+    'Entretenimiento': '#8B5CF6', // Violet
+    'Compras': '#06B6D4',       // Cyan
+    'Café': '#FB923C',          // Orange
+    'Teléfono': '#38BDF8',      // Sky
+    'Viajes': '#EC4899',        // Pink
+    'Mascotas': '#A3E635',      // Lime
+    'Educación': '#3B82F6',      // Blue
+    'Delivery': '#F472B6',      // Light Pink
+    'Ingresos': '#059669',      // Dark Emerald
+    'Sueldo': '#10B981',        // Emerald
+    'Gastos Financieros': '#6366F1', // Indigo-500
+    'Otros': '#94A3B8',         // Slate
 };
+
+const FALLBACK_COLORS = [
+    '#2DD4BF', // Teal
+    '#F87171', // Red
+    '#818CF8', // Indigo
+    '#C084FC', // Purple
+    '#FB7185', // Rose
+    '#FBBF24', // Amber
+    '#34D399', // Emerald
+];
+
+export function getCategoryColor(name: string): string {
+    if (CATEGORY_COLORS[name]) return CATEGORY_COLORS[name];
+
+    // Simple hash to pick a consistent color from fallback list
+    let hash = 0;
+    for (let i = 0; i < name.length; i++) {
+        hash = name.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    const index = Math.abs(hash) % FALLBACK_COLORS.length;
+    return FALLBACK_COLORS[index];
+}
 
 export interface CategorySummary {
     name: string;
@@ -273,7 +303,7 @@ export function useDashboardData(filters: DashboardFilters) {
                     icon: data.icon,
                     amount: Math.round(data.amount * 100) / 100,
                     percentage: total > 0 ? Math.round((data.amount / total) * 100) : 0,
-                    color: CATEGORY_COLORS[name] || '#6B7280',
+                    color: getCategoryColor(name),
                     transactionCount: data.count,
                 }))
                 .sort((a, b) => b.amount - a.amount);
