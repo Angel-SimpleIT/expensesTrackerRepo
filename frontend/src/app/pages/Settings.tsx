@@ -76,8 +76,8 @@ export function Settings() {
         <Card className="mb-6 hover:shadow-lg transition-shadow">
           <CardHeader className="pb-4">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-[#4F46E5] bg-opacity-10 rounded-lg flex items-center justify-center">
-                <MessageSquare className="w-5 h-5 text-[#4F46E5]" />
+              <div className="w-10 h-10 bg-[#025864] bg-opacity-10 rounded-lg flex items-center justify-center">
+                <MessageSquare className="w-5 h-5 text-[#025864]" />
               </div>
               <div>
                 <CardTitle>Conectar Canales</CardTitle>
@@ -112,17 +112,17 @@ export function Settings() {
             {/* Código Generado - Esperando Vinculación */}
             {!isConnected && pairingCode && (
               <div className="space-y-4">
-                <div className="p-6 bg-gradient-to-br from-[#4F46E5]/5 to-[#818CF8]/5 rounded-xl border border-[#4F46E5]/20">
+                <div className="p-6 bg-gradient-to-br from-[#025864]/5 to-[#00D47E]/5 rounded-xl border border-[#025864]/20">
                   <div className="flex items-center justify-between mb-4">
                     <p className="text-sm font-medium text-[#09090b]">Tu código de conexión</p>
                     <Badge variant="warning">Pendiente</Badge>
                   </div>
 
                   {/* Código Grande y Elegante */}
-                  <div className="bg-white rounded-xl p-6 mb-4 border-2 border-dashed border-[#4F46E5]/30">
+                  <div className="bg-white rounded-xl p-6 mb-4 border-2 border-dashed border-[#025864]/30">
                     <div className="text-center">
                       <p className="text-xs text-[#6B7280] mb-2 uppercase tracking-wide">Código</p>
-                      <p className="text-5xl font-bold text-[#4F46E5] tracking-wider font-mono">
+                      <p className="text-5xl font-bold text-[#025864] tracking-wider font-mono">
                         {pairingCode}
                       </p>
                     </div>
@@ -164,7 +164,7 @@ export function Settings() {
                 <div className="pt-2 border-t border-[#E5E7EB]">
                   <button
                     onClick={simulateConnection}
-                    className="w-full py-2 text-xs text-[#6B7280] hover:text-[#4F46E5] transition-colors"
+                    className="w-full py-2 text-xs text-[#6B7280] hover:text-[#025864] transition-colors"
                   >
                     🔧 Simular conexión (modo desarrollo)
                   </button>

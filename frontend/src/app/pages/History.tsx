@@ -82,13 +82,18 @@ const formatDate = (dateString: string) => {
   const now = new Date();
   const diffTime = now.getTime() - date.getTime();
   const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+  const isDifferentYear = date.getFullYear() !== now.getFullYear();
 
   if (diffDays === 0) {
     return `Hoy, ${date.toLocaleTimeString('es', { hour: '2-digit', minute: '2-digit' })}`;
   } else if (diffDays === 1) {
     return `Ayer, ${date.toLocaleTimeString('es', { hour: '2-digit', minute: '2-digit' })}`;
   } else {
-    return date.toLocaleDateString('es', { day: 'numeric', month: 'short' });
+    return date.toLocaleDateString('es', {
+      day: 'numeric',
+      month: 'short',
+      year: isDifferentYear ? 'numeric' : undefined
+    });
   }
 };
 
@@ -310,7 +315,7 @@ export function History() {
                   >
                     <div className="flex items-center gap-4">
                       {/* Merchant Logo */}
-                      <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-[#4F46E5] to-[#6366F1] flex items-center justify-center flex-shrink-0 shadow-sm">
+                      <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-[#025864] to-[#00D47E] flex items-center justify-center flex-shrink-0 shadow-sm">
                         <span className="text-white font-semibold text-lg">
                           {merchantInitial}
                         </span>
@@ -318,45 +323,45 @@ export function History() {
 
                       {/* Transaction Details */}
                       <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-1">
-                          <p className="font-semibold text-[#09090b]">
+                        <div className="flex items-center gap-2 mb-0.5">
+                          <p className="font-medium text-[#111827]">
                             {transaction.merchant_name || 'Sin comercio'}
                           </p>
                           {/* Category Badge */}
                           <div
                             className="flex items-center gap-1 px-2 py-0.5 rounded-full"
-                            style={{ backgroundColor: `${categoryColor}15` }}
+                            style={{ backgroundColor: `${categoryColor}10` }}
                           >
                             <IconComponent
-                              className="w-3 h-3"
+                              className="w-2.5 h-2.5"
                               style={{ color: categoryColor }}
                             />
                             <span
-                              className="text-xs font-medium"
+                              className="text-[10px] font-medium uppercase tracking-wider"
                               style={{ color: categoryColor }}
                             >
                               {transaction.category_name || 'Sin categoría'}
                             </span>
                           </div>
                         </div>
-                        <p className="text-sm text-[#6B7280] mb-1">
+                        <p className="text-sm text-[#4B5563] truncate italic mb-0.5">
                           "{transaction.raw_text || 'Sin descripción'}"
                         </p>
-                        <p className="text-xs text-[#9CA3AF]">
+                        <p className="text-[11px] text-[#9CA3AF] font-normal">
                           {formatDate(transaction.created_at)}
                         </p>
                       </div>
 
                       {/* Amount */}
                       <div className="text-right flex-shrink-0">
-                        <p className="text-xl font-bold text-[#F43F5E]">
+                        <p className="text-lg font-semibold text-[#EF4444]">
                           {formatMoney(transaction.amount_base || transaction.amount_original)}
-                          {transaction.currency_original !== homeCurrency && (
-                            <span className="ml-2 text-xs font-normal text-[#9CA3AF]">
-                              ({transaction.amount_original.toFixed(2)} {transaction.currency_original})
-                            </span>
-                          )}
                         </p>
+                        {transaction.currency_original !== homeCurrency && (
+                          <p className="text-[10px] text-[#9CA3AF] font-normal">
+                            {transaction.amount_original.toFixed(2)} {transaction.currency_original}
+                          </p>
+                        )}
                       </div>
                     </div>
                   </button>

@@ -154,7 +154,7 @@ export function EditTransactionModal({ transaction, categories, onClose, onSave,
               </button>
             </div>
             <div className="flex items-center gap-3 p-4 bg-[#F9FAFB] rounded-2xl">
-              <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-[#4F46E5] to-[#6366F1] flex items-center justify-center flex-shrink-0 shadow-sm">
+              <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-[#025864] to-[#00D47E] flex items-center justify-center flex-shrink-0 shadow-sm">
                 <span className="text-white font-semibold text-lg">
                   {transaction.merchantInitial}
                 </span>
@@ -198,7 +198,7 @@ export function EditTransactionModal({ transaction, categories, onClose, onSave,
                   inputMode="decimal"
                   value={amount}
                   onChange={(e) => handleAmountChange(e.target.value)}
-                  className="flex-1 px-5 py-4 text-2xl font-bold text-[#09090b] bg-[#F9FAFB] border border-[#E5E7EB] rounded-2xl focus:outline-none focus:ring-2 focus:ring-[#4F46E5] focus:border-transparent"
+                  className="flex-1 px-5 py-4 text-2xl font-bold text-[#09090b] bg-[#F9FAFB] border border-[#E5E7EB] rounded-2xl focus:outline-none focus:ring-2 focus:ring-[#025864] focus:border-transparent"
                 />
               </div>
             </div>
@@ -219,8 +219,8 @@ export function EditTransactionModal({ transaction, categories, onClose, onSave,
                       key={category.id}
                       onClick={() => setSelectedCategoryId(category.id)}
                       className={`flex flex-col items-center gap-2 p-4 rounded-2xl border transition-all ${isSelected
-                        ? "bg-[#4F46E5] border-[#4F46E5] shadow-md"
-                        : "bg-white border-[#E5E7EB] hover:border-[#4F46E5]/30 hover:bg-[#F9FAFB]"
+                        ? "bg-[#025864] border-[#025864] shadow-md"
+                        : "bg-white border-[#E5E7EB] hover:border-[#025864]/30 hover:bg-[#F9FAFB]"
                         }`}
                     >
                       <div
@@ -258,7 +258,7 @@ export function EditTransactionModal({ transaction, categories, onClose, onSave,
                   type="date"
                   value={date}
                   onChange={(e) => setDate(e.target.value)}
-                  className="w-full pl-14 pr-5 py-4 text-base text-[#09090b] bg-[#F9FAFB] border border-[#E5E7EB] rounded-2xl focus:outline-none focus:ring-2 focus:ring-[#4F46E5] focus:border-transparent"
+                  className="w-full pl-14 pr-5 py-4 text-base text-[#09090b] bg-[#F9FAFB] border border-[#E5E7EB] rounded-2xl focus:outline-none focus:ring-2 focus:ring-[#025864] focus:border-transparent"
                 />
               </div>
             </div>
@@ -325,7 +325,7 @@ export function EditTransactionModal({ transaction, categories, onClose, onSave,
                 onClick={handleSave}
                 disabled={!amount}
                 className={`flex-1 py-4 rounded-2xl font-semibold text-white transition-all ${amount
-                  ? "bg-[#4F46E5] hover:bg-[#4338CA] shadow-sm hover:shadow-md"
+                  ? "bg-[#025864] hover:bg-[#013E47] shadow-sm hover:shadow-md"
                   : "bg-[#E5E7EB] cursor-not-allowed"
                   }`}
               >

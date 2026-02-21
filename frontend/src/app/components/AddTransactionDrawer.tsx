@@ -241,7 +241,7 @@ export function AddTransactionDrawer({ isOpen, onClose, categories }: AddTransac
                       key={category.id}
                       onClick={() => setSelectedCategory(category.id)}
                       className={`flex flex-col items-center gap-2 p-4 rounded-2xl transition-all ${isSelected
-                        ? "bg-[#4F46E5] shadow-md"
+                        ? "bg-[#025864] shadow-md"
                         : "bg-[#F9FAFB] hover:bg-[#F3F4F6]"
                         }`}
                     >
@@ -274,7 +274,7 @@ export function AddTransactionDrawer({ isOpen, onClose, categories }: AddTransac
                 onClick={handleSubmit}
                 disabled={!amount || !selectedCategory || isSubmitting}
                 className={`w-full py-4 rounded-2xl font-semibold text-white transition-all flex items-center justify-center gap-2 ${amount && selectedCategory && !isSubmitting
-                  ? "bg-[#4F46E5] hover:bg-[#4338CA] shadow-sm"
+                  ? "bg-[#025864] hover:bg-[#013E47] shadow-sm"
                   : "bg-[#E5E7EB] cursor-not-allowed"
                   }`}
               >
