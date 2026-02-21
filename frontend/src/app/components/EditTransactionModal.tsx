@@ -1,12 +1,12 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { 
-  X, 
+import {
+  X,
   Trash2,
-  Coffee, 
-  ShoppingBag, 
-  Home, 
-  Car, 
+  Coffee,
+  ShoppingBag,
+  Home,
+  Car,
   Utensils,
   Smartphone,
   Heart,
@@ -22,6 +22,7 @@ interface Transaction {
   merchant: string;
   merchantInitial: string;
   category: string;
+  category_id?: string;
   categoryIcon: string;
   categoryColor: string;
   amount: number;
@@ -31,50 +32,76 @@ interface Transaction {
   timestamp: string;
 }
 
+interface Category {
+  id: string;
+  name: string;
+  icon: string | null;
+}
+
 interface EditTransactionModalProps {
   transaction: Transaction;
+  categories: Category[];
   onClose: () => void;
   onSave: (transaction: Transaction) => void;
   onDelete: (id: string) => void;
 }
 
-const categories = [
-  { id: "coffee", name: "Café", icon: Coffee, color: "#F59E0B" },
-  { id: "shopping", name: "Compras", icon: ShoppingBag, color: "#8B5CF6" },
-  { id: "home", name: "Hogar", icon: Home, color: "#06B6D4" },
-  { id: "transport", name: "Transporte", icon: Car, color: "#3B82F6" },
-  { id: "food", name: "Comida", icon: Utensils, color: "#EF4444" },
-  { id: "phone", name: "Teléfono", icon: Smartphone, color: "#10B981" },
-  { id: "health", name: "Salud", icon: Heart, color: "#F43F5E" },
-  { id: "travel", name: "Viajes", icon: Plane, color: "#EC4899" },
-  { id: "entertainment", name: "Ocio", icon: Film, color: "#F97316" },
-];
+// Color palette for categories (fallback)
+const CATEGORY_COLORS: Record<string, string> = {
+  'Alimentación': '#EF4444',
+  'Transporte': '#3B82F6',
+  'Compras': '#8B5CF6',
+  'Hogar': '#06B6D4',
+  'Café': '#F59E0B',
+  'Entretenimiento': '#F43F5E',
+  'Salud': '#10B981',
+  'Teléfono': '#10B981',
+  'Viajes': '#6366F1',
+};
 
-export function EditTransactionModal({ transaction, onClose, onSave, onDelete }: EditTransactionModalProps) {
+const DEFAULT_COLOR = '#6B7280';
+
+export function EditTransactionModal({ transaction, categories, onClose, onSave, onDelete }: EditTransactionModalProps) {
   const [amount, setAmount] = useState(transaction.amount.toString());
-  const [selectedCategory, setSelectedCategory] = useState(
-    categories.find(c => c.name === transaction.category)?.id || "coffee"
-  );
+  const [selectedCategoryId, setSelectedCategoryId] = useState(transaction.category_id || "");
   const [date, setDate] = useState(transaction.date);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
+  const getIcon = (iconName: string) => {
+    const icons: Record<string, any> = {
+      coffee: Coffee,
+      "shopping-bag": ShoppingBag,
+      car: Car,
+      utensils: Utensils,
+      smartphone: Smartphone,
+      home: Home,
+      heart: Heart,
+      plane: Plane,
+      film: Film,
+      TrendingUp: TrendingUp,
+      TrendingDown: TrendingDown,
+    };
+    const icon = icons[iconName];
+    return icon || Coffee;
+  };
+
   const handleAmountChange = (value: string) => {
-    // Only allow numbers and decimal point
     if (/^\d*\.?\d{0,2}$/.test(value)) {
       setAmount(value);
     }
   };
 
   const handleSave = () => {
-    const selectedCategoryData = categories.find(c => c.id === selectedCategory);
-    if (!selectedCategoryData || !amount) return;
+    const selectedCategory = categories.find(c => c.id === selectedCategoryId);
+    if (!amount) return;
 
     const updatedTransaction: Transaction = {
       ...transaction,
       amount: parseFloat(amount),
-      category: selectedCategoryData.name,
-      categoryIcon: selectedCategoryData.id,
-      categoryColor: selectedCategoryData.color,
+      category: selectedCategory?.name || transaction.category,
+      category_id: selectedCategoryId,
+      categoryIcon: selectedCategory?.icon || transaction.categoryIcon,
+      categoryColor: selectedCategory ? (CATEGORY_COLORS[selectedCategory.name] || DEFAULT_COLOR) : transaction.categoryColor,
       date: date,
     };
 
@@ -157,36 +184,34 @@ export function EditTransactionModal({ transaction, onClose, onSave, onDelete }:
               </label>
               <div className="grid grid-cols-3 gap-3">
                 {categories.map((category) => {
-                  const IconComponent = category.icon;
-                  const isSelected = selectedCategory === category.id;
-                  
+                  const IconComponent = getIcon(category.icon || "circle");
+                  const isSelected = selectedCategoryId === category.id;
+                  const categoryColor = CATEGORY_COLORS[category.name] || DEFAULT_COLOR;
+
                   return (
                     <button
                       key={category.id}
-                      onClick={() => setSelectedCategory(category.id)}
-                      className={`flex flex-col items-center gap-2 p-4 rounded-2xl border transition-all ${
-                        isSelected
-                          ? "bg-[#4F46E5] border-[#4F46E5] shadow-md"
-                          : "bg-white border-[#E5E7EB] hover:border-[#4F46E5]/30 hover:bg-[#F9FAFB]"
-                      }`}
-                    >
-                      <div 
-                        className={`w-10 h-10 rounded-xl flex items-center justify-center ${
-                          isSelected ? "bg-white/20" : ""
+                      onClick={() => setSelectedCategoryId(category.id)}
+                      className={`flex flex-col items-center gap-2 p-4 rounded-2xl border transition-all ${isSelected
+                        ? "bg-[#4F46E5] border-[#4F46E5] shadow-md"
+                        : "bg-white border-[#E5E7EB] hover:border-[#4F46E5]/30 hover:bg-[#F9FAFB]"
                         }`}
-                        style={{ 
-                          backgroundColor: isSelected ? "transparent" : `${category.color}15` 
+                    >
+                      <div
+                        className={`w-10 h-10 rounded-xl flex items-center justify-center ${isSelected ? "bg-white/20" : ""
+                          }`}
+                        style={{
+                          backgroundColor: isSelected ? "transparent" : `${categoryColor}15`
                         }}
                       >
-                        <IconComponent 
+                        <IconComponent
                           className="w-5 h-5"
-                          style={{ color: isSelected ? "#FFFFFF" : category.color }}
+                          style={{ color: isSelected ? "#FFFFFF" : categoryColor }}
                         />
                       </div>
-                      <span 
-                        className={`text-xs font-medium ${
-                          isSelected ? "text-white" : "text-[#6B7280]"
-                        }`}
+                      <span
+                        className={`text-xs font-medium ${isSelected ? "text-white" : "text-[#6B7280]"
+                          }`}
                       >
                         {category.name}
                       </span>
@@ -216,12 +241,11 @@ export function EditTransactionModal({ transaction, onClose, onSave, onDelete }:
             <div className="mb-8 p-4 bg-[#F9FAFB] rounded-2xl border border-[#E5E7EB]">
               <div className="flex items-center justify-between">
                 <span className="text-sm text-[#6B7280]">Tipo de transacción</span>
-                <span 
-                  className={`px-3 py-1 rounded-full text-xs font-medium ${
-                    transaction.type === "income" 
-                      ? "bg-[#10B981]/10 text-[#10B981]" 
-                      : "bg-[#F43F5E]/10 text-[#F43F5E]"
-                  }`}
+                <span
+                  className={`px-3 py-1 rounded-full text-xs font-medium ${transaction.type === "income"
+                    ? "bg-[#10B981]/10 text-[#10B981]"
+                    : "bg-[#F43F5E]/10 text-[#F43F5E]"
+                    }`}
                 >
                   {transaction.type === "income" ? "Ingreso" : "Gasto"}
                 </span>
@@ -274,11 +298,10 @@ export function EditTransactionModal({ transaction, onClose, onSave, onDelete }:
               <button
                 onClick={handleSave}
                 disabled={!amount}
-                className={`flex-1 py-4 rounded-2xl font-semibold text-white transition-all ${
-                  amount
-                    ? "bg-[#4F46E5] hover:bg-[#4338CA] shadow-sm hover:shadow-md"
-                    : "bg-[#E5E7EB] cursor-not-allowed"
-                }`}
+                className={`flex-1 py-4 rounded-2xl font-semibold text-white transition-all ${amount
+                  ? "bg-[#4F46E5] hover:bg-[#4338CA] shadow-sm hover:shadow-md"
+                  : "bg-[#E5E7EB] cursor-not-allowed"
+                  }`}
               >
                 Guardar Cambios
               </button>

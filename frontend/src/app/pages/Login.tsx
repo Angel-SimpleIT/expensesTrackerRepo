@@ -28,11 +28,8 @@ export function Login() {
         duration: 2000,
       });
 
-      // Redirect based on role (will be determined in the router)
-      // The ProtectedRoute component will handle the actual redirect
-      setTimeout(() => {
-        navigate('/dashboard');
-      }, 500);
+      // Redirect to dashboard. ProtectedRoute will show spinner while profile is loading.
+      navigate('/dashboard');
     } else {
       setError(result.error || 'Error al iniciar sesión');
       toast.error('Error de autenticación', {

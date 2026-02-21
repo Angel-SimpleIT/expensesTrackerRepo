@@ -1,7 +1,6 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useEffect } from "react";
 import {
   Search,
-  Filter,
   Coffee,
   ShoppingBag,
   Home,
@@ -14,15 +13,15 @@ import {
   Circle,
   Loader2,
   Calendar as CalendarIcon,
-  ChevronLeft,
-  ChevronRight
+  TrendingUp,
+  TrendingDown
 } from "lucide-react";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { DateRange } from "react-day-picker";
 
 import { EditTransactionModal } from "../components/EditTransactionModal";
-import { useTransactions } from "../hooks/useData";
+import { useTransactions, useCategories } from "../hooks/useData";
 import { Input } from "../components/ui/input";
 import { Button } from "../components/ui/button";
 import { Card } from "../components/ui/card";
@@ -69,6 +68,8 @@ const getIcon = (iconName: string) => {
     plane: Plane,
     film: Film,
     circle: Circle,
+    TrendingUp: TrendingUp,
+    TrendingDown: TrendingDown,
   };
   return icons[iconName] || Circle;
 };
@@ -95,8 +96,6 @@ export function History() {
   const [currentPage, setCurrentPage] = useState(1);
   const PAGE_SIZE = 10;
 
-
-
   const [selectedTransaction, setSelectedTransaction] = useState<any | null>(null);
 
   // --- SEARCH STATE ---
@@ -107,8 +106,6 @@ export function History() {
   useEffect(() => {
     const timer = setTimeout(() => {
       setDebouncedSearchQuery(searchQuery);
-      // We don't reset page here because the effect runs on mount too potentially.
-      // Actually, optimal is to reset page when debounced query changes
     }, 500);
 
     return () => clearTimeout(timer);
@@ -119,7 +116,7 @@ export function History() {
     setCurrentPage(1);
   }, [debouncedSearchQuery]);
 
-  const { transactions, loading, error, totalPages, totalCount } = useTransactions({
+  const { transactions, loading, error, totalPages, totalCount, updateTransaction, deleteTransaction } = useTransactions({
     page: currentPage,
     pageSize: PAGE_SIZE,
     startDate: date?.from,
@@ -127,14 +124,7 @@ export function History() {
     searchQuery: debouncedSearchQuery,
   });
 
-  // Filter transactions based on search query (Server-side now, so we just use transactions)
-  const filteredTransactions = transactions;
-
-  // Calculate totals (of displayed page)
-  const totalExpenses = useMemo(() =>
-    transactions.reduce((sum, t) => sum + t.amount_original, 0),
-    [transactions]
-  );
+  const { categories } = useCategories();
 
   // --- HANDLERS ---
   const handlePageChange = (newPage: number) => {
@@ -145,7 +135,7 @@ export function History() {
 
   const handleDateSelect = (newDate: DateRange | undefined) => {
     setDate(newDate);
-    setCurrentPage(1); // Reset to first page on filter change
+    setCurrentPage(1);
   };
 
   const clearFilters = () => {
@@ -153,6 +143,29 @@ export function History() {
     setSearchQuery("");
     setDebouncedSearchQuery("");
     setCurrentPage(1);
+  };
+
+  const handleSave = async (updatedTransaction: any) => {
+    const { error } = await updateTransaction(updatedTransaction.id, {
+      amount_original: updatedTransaction.amount,
+      category_id: updatedTransaction.category_id,
+      created_at: new Date(updatedTransaction.date).toISOString(),
+    });
+
+    if (!error) {
+      setSelectedTransaction(null);
+    } else {
+      alert("Error al actualizar la transacción: " + error.message);
+    }
+  };
+
+  const handleDelete = async (id: string) => {
+    const { error } = await deleteTransaction(id);
+    if (!error) {
+      setSelectedTransaction(null);
+    } else {
+      alert("Error al eliminar la transacción: " + error.message);
+    }
   };
 
   // Graceful loading for first-time data fetch
@@ -193,7 +206,7 @@ export function History() {
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--neutral-400)]" />
             <Input
               type="text"
-              placeholder="Buscar en esta página..."
+              placeholder="Buscar..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="pl-9"
@@ -250,17 +263,15 @@ export function History() {
 
         {/* Transactions List */}
         <Card className="overflow-hidden border border-[#E5E7EB] shadow-sm bg-white p-0">
-          {filteredTransactions.length === 0 ? (
+          {transactions.length === 0 ? (
             <div className="p-12 text-center">
               <p className="text-[#6B7280]">
-                {transactions.length === 0
-                  ? "No se encontraron transacciones en este rango/página"
-                  : "No se encontraron transacciones con tu búsqueda"}
+                No se encontraron transacciones
               </p>
             </div>
           ) : (
             <div className="divide-y divide-[#E5E7EB]">
-              {filteredTransactions.map((transaction) => {
+              {transactions.map((transaction) => {
                 const categoryColor = CATEGORY_COLORS[transaction.category_name || ''] || DEFAULT_COLOR;
                 const IconComponent = getIcon(transaction.category_icon || 'circle');
                 const merchantInitial = (transaction.merchant_name || 'X')[0].toUpperCase();
@@ -273,6 +284,7 @@ export function History() {
                       merchant: transaction.merchant_name || 'Sin comercio',
                       merchantInitial,
                       category: transaction.category_name || 'Sin categoría',
+                      category_id: transaction.category_id,
                       categoryIcon: transaction.category_icon || 'circle',
                       categoryColor,
                       amount: transaction.amount_original,
@@ -355,7 +367,6 @@ export function History() {
                 {/* Dynamic Pagination Pages */}
                 {(() => {
                   const pages = [];
-                  // Logic to show a limited number of pages
                   let startPage = Math.max(1, currentPage - 2);
                   let endPage = Math.min(totalPages, startPage + 4);
 
@@ -436,7 +447,7 @@ export function History() {
           <Card className="p-6">
             <p className="text-sm text-[#6B7280] mb-2">Total Gastos (Página)</p>
             <p className="text-3xl font-bold text-[#F43F5E]">
-              -${totalExpenses.toFixed(2)}
+              -${transactions.reduce((sum, t) => sum + t.amount_original, 0).toFixed(2)}
             </p>
           </Card>
           <Card className="p-6">
@@ -453,15 +464,10 @@ export function History() {
       {selectedTransaction && (
         <EditTransactionModal
           transaction={selectedTransaction}
+          categories={categories}
           onClose={() => setSelectedTransaction(null)}
-          onSave={(updatedTransaction) => {
-            console.log("Updated transaction:", updatedTransaction);
-            setSelectedTransaction(null);
-          }}
-          onDelete={(id) => {
-            console.log("Delete transaction:", id);
-            setSelectedTransaction(null);
-          }}
+          onSave={handleSave}
+          onDelete={handleDelete}
         />
       )}
     </div>

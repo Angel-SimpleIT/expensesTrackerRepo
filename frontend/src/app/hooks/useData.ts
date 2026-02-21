@@ -59,6 +59,7 @@ interface UseTransactionsOptions {
 
 export function useTransactions(options: UseTransactionsOptions = {}) {
     const { user } = useAuth();
+    const userId = user?.id ?? null;
     const [transactions, setTransactions] = useState<Transaction[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -67,7 +68,7 @@ export function useTransactions(options: UseTransactionsOptions = {}) {
     const { page = 1, pageSize = 20, startDate, endDate, searchQuery } = options;
 
     const fetchTransactions = async (showLoading = true) => {
-        if (!user) {
+        if (!userId) {
             setTransactions([]);
             setTotalCount(0);
             setLoading(false);
@@ -86,7 +87,7 @@ export function useTransactions(options: UseTransactionsOptions = {}) {
                     icon
                   )
                 `, { count: 'exact' })
-                .eq('user_id', user.id)
+                .eq('user_id', userId)
                 .order('created_at', { ascending: false });
 
             // Apply date filters
@@ -103,9 +104,6 @@ export function useTransactions(options: UseTransactionsOptions = {}) {
             // Apply search filter
             if (searchQuery && searchQuery.trim() !== '') {
                 const term = searchQuery.trim();
-                // We use .or() to search in multiple columns. 
-                // Note: filtering on joined tables (categories.name) is more complex in simple query builder,
-                // so we focus on merchant_name and raw_text for now.
                 query = query.or(`merchant_name.ilike.%${term}%,raw_text.ilike.%${term}%`);
             }
 
@@ -152,11 +150,8 @@ export function useTransactions(options: UseTransactionsOptions = {}) {
     };
 
     useEffect(() => {
-        // Debouncing logic could be handled here or in the component. 
-        // For simplicity, we assume the component passes a debounced value or we fetch directly.
-        // Given the requirement, let's just fetch when options change.
         fetchTransactions();
-    }, [user, page, pageSize, startDate, endDate, searchQuery]);
+    }, [userId, page, pageSize, startDate, endDate, searchQuery]);
 
     return {
         transactions,
@@ -164,7 +159,40 @@ export function useTransactions(options: UseTransactionsOptions = {}) {
         error,
         totalCount,
         totalPages: Math.ceil(totalCount / pageSize),
-        refresh: () => fetchTransactions(false)
+        refresh: () => fetchTransactions(false),
+        updateTransaction: async (id: string, updates: Partial<Transaction>) => {
+            const { error } = await supabase
+                .from('transactions')
+                .update({
+                    amount_original: updates.amount_original,
+                    category_id: updates.category_id,
+                    created_at: updates.created_at,
+                    merchant_name: updates.merchant_name,
+                })
+                .eq('id', id);
+
+            if (error) {
+                console.error('Error updating transaction:', error);
+                return { error };
+            }
+
+            await fetchTransactions(false);
+            return { error: null };
+        },
+        deleteTransaction: async (id: string) => {
+            const { error } = await supabase
+                .from('transactions')
+                .delete()
+                .eq('id', id);
+
+            if (error) {
+                console.error('Error deleting transaction:', error);
+                return { error };
+            }
+
+            await fetchTransactions(false);
+            return { error: null };
+        }
     };
 }
 

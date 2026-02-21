@@ -67,6 +67,7 @@ function getGranularity(start: Date, end: Date): Granularity {
 
 export function useDashboardData(filters: DashboardFilters) {
     const { user } = useAuth();
+    const userId = user?.id ?? null;
     const [transactions, setTransactions] = useState<DashboardTransaction[]>([]);
     const [chartData, setChartData] = useState<ChartDataPoint[]>([]);
     const [categorySummary, setCategorySummary] = useState<CategorySummary[]>([]);
@@ -75,7 +76,7 @@ export function useDashboardData(filters: DashboardFilters) {
     const [error, setError] = useState<string | null>(null);
 
     const fetchData = useCallback(async (showLoading = true) => {
-        if (!user) {
+        if (!userId) {
             setTransactions([]);
             setChartData([]);
             setCategorySummary([]);
@@ -102,7 +103,7 @@ export function useDashboardData(filters: DashboardFilters) {
                         icon
                     )
                 `)
-                .eq('user_id', user.id)
+                .eq('user_id', userId)
                 .gte('created_at', filters.dateFrom.toISOString())
                 .lte('created_at', filters.dateTo.toISOString())
                 .order('created_at', { ascending: false });
@@ -206,14 +207,6 @@ export function useDashboardData(filters: DashboardFilters) {
                     key = format(startOfYear(tDate), 'yyyy');
                 }
 
-                // If transaction date is within range but bucket missing (e.g. edge cases due to time), find closest or ignore?
-                // The buckets are generated from filters.dateFrom/To.
-                // t.created_at should be within that range due to query.
-                // However, exact match depends on keys.
-
-                // Let's rely on dataMap.get(key). If undefined, it might be slightly out of generated intervals 
-                // (e.g. time differences on first/last day). 
-                // For simplicity and robustness, we can try to re-generate key safely or just use if exists.
                 if (dataMap.has(key)) {
                     const bucket = dataMap.get(key)!;
                     bucket.total += t.amount_original;
@@ -280,7 +273,7 @@ export function useDashboardData(filters: DashboardFilters) {
         } finally {
             setLoading(false);
         }
-    }, [user, filters.dateFrom, filters.dateTo, filters.categoryIds, filters.amountMin, filters.amountMax]);
+    }, [userId, filters.dateFrom, filters.dateTo, filters.categoryIds, filters.amountMin, filters.amountMax]);
 
     useEffect(() => {
         fetchData();
