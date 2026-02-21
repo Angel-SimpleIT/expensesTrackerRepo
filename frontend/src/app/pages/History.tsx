@@ -22,6 +22,8 @@ import { DateRange } from "react-day-picker";
 
 import { EditTransactionModal } from "../components/EditTransactionModal";
 import { useTransactions, useCategories } from "../hooks/useData";
+import { useCurrency } from "../contexts/CurrencyContext";
+import { getCurrencySymbol } from "../../utils/format";
 import { Input } from "../components/ui/input";
 import { Button } from "../components/ui/button";
 import { Card } from "../components/ui/card";
@@ -92,6 +94,7 @@ const formatDate = (dateString: string) => {
 
 export function History() {
   // --- STATE ---
+  const { homeCurrency, formatMoney } = useCurrency();
   const [date, setDate] = useState<DateRange | undefined>();
   const [currentPage, setCurrentPage] = useState(1);
   const PAGE_SIZE = 10;
@@ -337,7 +340,12 @@ export function History() {
                       {/* Amount */}
                       <div className="text-right flex-shrink-0">
                         <p className="text-xl font-bold text-[#F43F5E]">
-                          -${transaction.amount_original.toFixed(2)}
+                          {formatMoney(transaction.amount_base || transaction.amount_original)}
+                          {transaction.currency_original !== homeCurrency && (
+                            <span className="ml-2 text-xs font-normal text-[#9CA3AF]">
+                              ({transaction.amount_original}{getCurrencySymbol(transaction.currency_original)})
+                            </span>
+                          )}
                         </p>
                       </div>
                     </div>

@@ -15,7 +15,17 @@ import {
 } from "lucide-react";
 import { supabase } from "../../utils/supabase";
 import { useAuth } from "../contexts/AuthContext";
+import { useCurrency } from "../contexts/CurrencyContext";
 import { Category } from "../hooks/useData";
+import { getCurrencySymbol } from "../../utils/format";
+import { fetchExchangeRates, convertCurrency } from "../../utils/currency";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "./ui/select";
 
 interface AddTransactionDrawerProps {
   isOpen: boolean;
@@ -63,17 +73,27 @@ const colorMap: Record<string, string> = {
 
 export function AddTransactionDrawer({ isOpen, onClose, categories }: AddTransactionDrawerProps) {
   const { user, profile } = useAuth();
+  const { homeCurrency } = useCurrency();
   const [amount, setAmount] = useState("");
+  const [selectedCurrency, setSelectedCurrency] = useState(homeCurrency);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Sync selectedCurrency with homeCurrency when profile loads
+  useEffect(() => {
+    if (homeCurrency) {
+      setSelectedCurrency(homeCurrency);
+    }
+  }, [homeCurrency]);
 
   // Reset state when drawer opens
   useEffect(() => {
     if (isOpen) {
       setAmount("");
       setSelectedCategory(null);
+      setSelectedCurrency(homeCurrency);
     }
-  }, [isOpen]);
+  }, [isOpen, homeCurrency]);
 
   const handleAmountChange = (value: string) => {
     if (/^\d*\.?\d{0,2}$/.test(value)) {
@@ -87,15 +107,29 @@ export function AddTransactionDrawer({ isOpen, onClose, categories }: AddTransac
     setIsSubmitting(true);
     try {
       const numAmount = parseFloat(amount);
+
+      // Fetch rates and calculate base amount (home_currency)
+      const ratesData = await fetchExchangeRates();
+      let amountBase = numAmount;
+
+      if (ratesData && selectedCurrency !== homeCurrency) {
+        amountBase = convertCurrency(
+          numAmount,
+          selectedCurrency,
+          homeCurrency,
+          ratesData.rates
+        );
+      }
+
       const { error } = await supabase
         .from('transactions')
         .insert({
           user_id: user.id,
           amount_original: numAmount,
-          amount_base: numAmount, // Assuming same as base for now
-          currency_original: profile?.home_currency || 'EUR',
+          amount_base: amountBase,
+          currency_original: selectedCurrency,
           category_id: selectedCategory,
-          is_ai_confirmed: true, // Manual entry is considered confirmed
+          is_ai_confirmed: true,
         });
 
       if (error) throw error;
@@ -144,19 +178,38 @@ export function AddTransactionDrawer({ isOpen, onClose, categories }: AddTransac
 
             <div className="px-6 py-8 border-b border-[#E5E7EB]">
               <p className="text-sm text-[#6B7280] mb-3 text-center">Cantidad</p>
-              <div className="flex items-center justify-center gap-2">
-                <span className="text-5xl font-bold text-[#09090b]">
-                  {profile?.home_currency === 'USD' ? '$' : '€'}
-                </span>
-                <input
-                  type="text"
-                  inputMode="decimal"
-                  value={amount}
-                  onChange={(e) => handleAmountChange(e.target.value)}
-                  placeholder="0.00"
-                  className="text-5xl font-bold text-[#09090b] bg-transparent border-none outline-none text-center w-48"
-                  autoFocus
-                />
+              <div className="flex flex-col items-center gap-4">
+                <div className="flex items-center justify-center gap-2">
+                  <span className="text-5xl font-bold text-[#09090b]">
+                    {getCurrencySymbol(selectedCurrency)}
+                  </span>
+                  <input
+                    type="text"
+                    inputMode="decimal"
+                    value={amount}
+                    onChange={(e) => handleAmountChange(e.target.value)}
+                    placeholder="0.00"
+                    className="text-5xl font-bold text-[#09090b] bg-transparent border-none outline-none text-center w-48"
+                    autoFocus
+                  />
+                </div>
+
+                <Select
+                  value={selectedCurrency}
+                  onValueChange={setSelectedCurrency}
+                >
+                  <SelectTrigger className="w-24 h-8 text-xs font-semibold bg-[#F9FAFB] border-none rounded-full">
+                    <SelectValue placeholder="Moneda" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="USD">USD ($)</SelectItem>
+                    <SelectItem value="EUR">EUR (€)</SelectItem>
+                    <SelectItem value="PYG">PYG (Gs)</SelectItem>
+                    <SelectItem value="UYU">UYU ($U)</SelectItem>
+                    <SelectItem value="ARS">ARS ($)</SelectItem>
+                    <SelectItem value="MXN">MXN ($)</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
             </div>
 

@@ -5,6 +5,23 @@
  * @param currency El código de moneda (ISO 4217), ej. 'USD', 'EUR', 'PYG'.
  * @returns El string formateado con el símbolo correcto.
  */
+/**
+ * Obtiene el símbolo de una moneda.
+ */
+export function getCurrencySymbol(currency: string = 'USD'): string {
+    try {
+        return new Intl.NumberFormat('es-AR', {
+            style: 'currency',
+            currency: currency.toUpperCase(),
+            currencyDisplay: 'narrowSymbol',
+        })
+            .formatToParts(0)
+            .find(part => part.type === 'currency')?.value || currency;
+    } catch (e) {
+        return currency;
+    }
+}
+
 export function formatMoney(amount: number, currency: string = 'USD'): string {
     try {
         // Configuraciones especiales para ciertas monedas si es necesario
