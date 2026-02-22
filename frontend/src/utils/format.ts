@@ -42,3 +42,20 @@ export function formatMoney(amount: number, currency: string = 'USD'): string {
         return `${currency} ${amount.toLocaleString('es-AR')}`;
     }
 }
+
+/**
+ * Convierte un timestamp UTC a la hora local del usuario y lo formatea.
+ */
+export function formatToLocalTime(
+    utcTimestamp: string | Date,
+    options: Intl.DateTimeFormatOptions = {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+    }
+): string {
+    const date = typeof utcTimestamp === 'string' ? new Date(utcTimestamp) : utcTimestamp;
+    return new Intl.DateTimeFormat('es-AR', options).format(date);
+}

@@ -96,7 +96,7 @@ function getGranularity(start: Date, end: Date): Granularity {
 }
 
 export function useDashboardData(filters: DashboardFilters) {
-    const { user } = useAuth();
+    const { user, profile } = useAuth();
     const userId = user?.id ?? null;
     const [transactions, setTransactions] = useState<DashboardTransaction[]>([]);
     const [chartData, setChartData] = useState<ChartDataPoint[]>([]);
@@ -123,7 +123,8 @@ export function useDashboardData(filters: DashboardFilters) {
             const { data: rpcData, error: rpcError } = await supabase.rpc('get_daily_category_stats', {
                 p_user_id: userId,
                 p_date_from: filters.dateFrom.toISOString(),
-                p_date_to: filters.dateTo.toISOString()
+                p_date_to: filters.dateTo.toISOString(),
+                p_timezone: profile?.timezone || 'UTC'
             });
 
             if (rpcError) {

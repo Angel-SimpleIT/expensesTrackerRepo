@@ -49,6 +49,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         home_currency: data.home_currency,
         bot_user_id: data.bot_user_id,
         pairing_code: data.pairing_code,
+        timezone: data.timezone,
       } as Profile;
     } catch (err: any) {
       if (err.name === 'AbortError' || err.message?.includes('aborted')) {
@@ -103,6 +104,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               loading: false
             });
             console.log('[Auth] Profile loaded', { profileId: profile?.id });
+
+            // Detect and auto-update timezone
+            if (profile) {
+              const browserTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+              if (profile.timezone !== browserTimezone) {
+                console.log(`[Auth] Timezone mismatch: ${profile.timezone} vs ${browserTimezone}. Updating...`);
+                // Update in DB and background update state
+                updateProfileInContext(session.user.id, { timezone: browserTimezone });
+              }
+            }
           } else {
             // Just update the user object
             if (!mounted) return;
@@ -168,6 +179,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       .from('profiles')
       .update(dbUpdates)
       .eq('id', state.profile.id);
+
+    if (error) {
+      console.error('Error updating profile:', error);
+      return;
+    }
+
+    setState(prev => ({
+      ...prev,
+      profile: prev.profile ? { ...prev.profile, ...updates } : null
+    }));
+  };
+
+  const updateProfileInContext = async (userId: string, updates: Partial<Profile>) => {
+    const dbUpdates: Record<string, any> = {};
+    if (updates.name !== undefined) dbUpdates.full_name = updates.name;
+    if (updates.bot_user_id !== undefined) dbUpdates.bot_user_id = updates.bot_user_id;
+    if (updates.pairing_code !== undefined) dbUpdates.pairing_code = updates.pairing_code;
+    if (updates.home_currency !== undefined) dbUpdates.home_currency = updates.home_currency;
+    if (updates.timezone !== undefined) dbUpdates.timezone = updates.timezone;
+
+    const { error } = await supabase
+      .from('profiles')
+      .update(dbUpdates)
+      .eq('id', userId);
 
     if (error) {
       console.error('Error updating profile:', error);

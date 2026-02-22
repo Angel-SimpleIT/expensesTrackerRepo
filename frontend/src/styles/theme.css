@@ -69,7 +69,7 @@
   --shadow-float: 0 10px 30px -5px rgba(2, 88, 100, 0.15);
   --shadow-inner: inset 0 2px 4px 0 rgba(0, 0, 0, 0.06);
   --blur-backdrop: blur(8px);
-  
+
   /* Transitions */
   --transition-default: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   --transition-hover: all 0.3s ease-out;
@@ -112,7 +112,7 @@
   --font-money-large-line-height: 1;
   --font-money-large-weight: 400;
   --font-money-large-letter-spacing: -0.03em;
-  
+
   /* Legacy/Compatibility Mappings (optional, for existing code) */
   --background: var(--bg-default);
   --foreground: var(--neutral-900);
@@ -126,7 +126,7 @@
 @theme inline {
   /* Fonts */
   --font-sans: Helvetica, 'Helvetica Neue', Arial, sans-serif;
-  
+
   /* Colors - Design System Mappings */
   --color-primary: var(--primary-main);
   --color-primary-dark: var(--primary-dark);
@@ -150,7 +150,7 @@
   --color-neutral-200: var(--neutral-200);
   --color-neutral-100: var(--neutral-100);
   --color-neutral-50: var(--neutral-50);
-  
+
   --color-success-text: var(--success-text);
   --color-success-bg: var(--success-bg);
   --color-error-text: var(--error-text);
@@ -176,7 +176,7 @@
   --radius-lg: var(--radius-lg);
   --radius-xl: var(--radius-xl);
   --radius-full: var(--radius-full);
-  
+
   /* Spacing */
   --spacing-xs: var(--spacing-xs);
   --spacing-sm: var(--spacing-sm);
@@ -217,5 +217,16 @@
     font-weight: var(--font-h3-weight);
     line-height: var(--font-h3-line-height);
     letter-spacing: var(--font-h3-letter-spacing);
+  }
+}
+
+@layer utilities {
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
   }
 }

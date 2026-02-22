@@ -16,4 +16,5 @@ export interface Profile {
   home_currency?: string;
   bot_user_id?: string | null;
   pairing_code?: string | null;
+  timezone?: string;
 }

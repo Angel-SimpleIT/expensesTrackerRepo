@@ -19,6 +19,7 @@ function getPresetDates(preset: DateRangePreset): { from: Date; to: Date } {
     const now = new Date();
     switch (preset) {
         case 'today':
+            // startOfDay(now) usa la medianoche local del navegador
             return { from: startOfDay(now), to: endOfDay(now) };
         case '7d':
             return { from: startOfDay(subDays(now, 6)), to: endOfDay(now) };

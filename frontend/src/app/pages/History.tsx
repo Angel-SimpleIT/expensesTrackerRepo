@@ -23,7 +23,7 @@ import { DateRange } from "react-day-picker";
 import { EditTransactionModal } from "../components/EditTransactionModal";
 import { useTransactions, useCategories } from "../hooks/useData";
 import { useCurrency } from "../contexts/CurrencyContext";
-import { getCurrencySymbol } from "../../utils/format";
+import { getCurrencySymbol, formatToLocalTime } from "../../utils/format";
 import { Input } from "../components/ui/input";
 import { Button } from "../components/ui/button";
 import { Card } from "../components/ui/card";
@@ -77,19 +77,23 @@ const getIcon = (iconName: string) => {
 };
 
 // Format date to relative or absolute string
-const formatDate = (dateString: string) => {
+const formatDateLocal = (dateString: string) => {
   const date = new Date(dateString);
   const now = new Date();
-  const diffTime = now.getTime() - date.getTime();
-  const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+
+  // Normalize dates to local midnight for comparison
+  const dLocal = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+  const nLocal = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const diffDays = Math.floor((nLocal.getTime() - dLocal.getTime()) / (1000 * 60 * 60 * 24));
+
   const isDifferentYear = date.getFullYear() !== now.getFullYear();
 
   if (diffDays === 0) {
-    return `Hoy, ${date.toLocaleTimeString('es', { hour: '2-digit', minute: '2-digit' })}`;
+    return `Hoy, ${formatToLocalTime(date, { hour: '2-digit', minute: '2-digit' })}`;
   } else if (diffDays === 1) {
-    return `Ayer, ${date.toLocaleTimeString('es', { hour: '2-digit', minute: '2-digit' })}`;
+    return `Ayer, ${formatToLocalTime(date, { hour: '2-digit', minute: '2-digit' })}`;
   } else {
-    return date.toLocaleDateString('es', {
+    return formatToLocalTime(date, {
       day: 'numeric',
       month: 'short',
       year: isDifferentYear ? 'numeric' : undefined
@@ -309,7 +313,7 @@ export function History() {
                       type: 'expense' as const,
                       originalText: transaction.raw_text || '',
                       date: transaction.created_at.split('T')[0],
-                      timestamp: formatDate(transaction.created_at),
+                      timestamp: formatDateLocal(transaction.created_at),
                     })}
                     className="w-full p-5 hover:bg-[#F9FAFB] transition-colors text-left"
                   >
@@ -348,7 +352,7 @@ export function History() {
                           "{transaction.raw_text || 'Sin descripción'}"
                         </p>
                         <p className="text-[11px] text-[#9CA3AF] font-normal">
-                          {formatDate(transaction.created_at)}
+                          {formatDateLocal(transaction.created_at)}
                         </p>
                       </div>
 

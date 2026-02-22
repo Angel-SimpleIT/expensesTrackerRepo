@@ -12,7 +12,10 @@ import {
   Plane,
   Film,
   Loader2,
-  ChevronDown
+  ChevronDown,
+  Calendar,
+  AlertCircle,
+  Clock
 } from "lucide-react";
 import { supabase } from "../../utils/supabase";
 import { useAuth } from "../contexts/AuthContext";
@@ -20,6 +23,8 @@ import { useCurrency } from "../contexts/CurrencyContext";
 import { Category } from "../hooks/useData";
 import { getCurrencySymbol } from "../../utils/format";
 import { fetchExchangeRates, convertCurrency } from "../../utils/currency";
+import { format, subDays, isSameDay, startOfDay } from "date-fns";
+import { es } from "date-fns/locale";
 import {
   Select,
   SelectContent,
@@ -78,7 +83,18 @@ export function AddTransactionDrawer({ isOpen, onClose, categories }: AddTransac
   const [amount, setAmount] = useState("");
   const [selectedCurrency, setSelectedCurrency] = useState(homeCurrency);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [transactionDate, setTransactionDate] = useState(format(new Date(), "yyyy-MM-dd"));
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Derive if it's a backdated transaction
+  const isBackdated = transactionDate && !isSameDay(new Date(transactionDate + "T12:00:00"), new Date());
+
+  const quickDates = [
+    { label: "Hoy", date: new Date() },
+    { label: "Ayer", date: subDays(new Date(), 1) },
+    { label: format(subDays(new Date(), 2), "EEEE", { locale: es }), date: subDays(new Date(), 2) },
+    { label: format(subDays(new Date(), 3), "EEEE", { locale: es }), date: subDays(new Date(), 3) },
+  ];
 
   // Sync selectedCurrency with homeCurrency when profile loads
   useEffect(() => {
@@ -93,6 +109,7 @@ export function AddTransactionDrawer({ isOpen, onClose, categories }: AddTransac
       setAmount("");
       setSelectedCategory(null);
       setSelectedCurrency(homeCurrency);
+      setTransactionDate(format(new Date(), "yyyy-MM-dd"));
     }
   }, [isOpen, homeCurrency]);
 
@@ -144,6 +161,13 @@ export function AddTransactionDrawer({ isOpen, onClose, categories }: AddTransac
           currency_original: selectedCurrency,
           category_id: selectedCategory,
           is_ai_confirmed: true,
+          // If it's today, use full current timestamp. If it's a past date, use that date + current time.
+          created_at: (() => {
+            const now = new Date();
+            const selected = new Date(transactionDate + "T00:00:00");
+            selected.setHours(now.getHours(), now.getMinutes(), now.getSeconds());
+            return selected.toISOString();
+          })(),
         });
 
       if (error) throw error;
@@ -224,6 +248,54 @@ export function AddTransactionDrawer({ isOpen, onClose, categories }: AddTransac
                     autoFocus
                   />
                 </div>
+              </div>
+            </div>
+
+            <div className="px-6 py-6 border-b border-[#E5E7EB] bg-[#F9FAFB]/50">
+              <div className="flex items-center justify-between mb-4">
+                <p className="text-sm font-medium text-[#09090b]">Fecha del Gasto</p>
+                {isBackdated && (
+                  <motion.div
+                    initial={{ opacity: 0, x: 10 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    className="flex items-center gap-1.5 text-[10px] font-medium text-[#B45309] bg-[#FFFBEB] px-2 py-1 rounded-full border border-[#FEF3C7]"
+                  >
+                    <AlertCircle className="w-3 h-3" />
+                    Registro de día anterior
+                  </motion.div>
+                )}
+              </div>
+
+              {/* Quick Date Selectors */}
+              <div className="flex gap-2 overflow-x-auto pb-4 no-scrollbar">
+                {quickDates.map((qd) => {
+                  const qdString = format(qd.date, "yyyy-MM-dd");
+                  const isActive = transactionDate === qdString;
+                  return (
+                    <button
+                      key={qdString}
+                      onClick={() => setTransactionDate(qdString)}
+                      className={`px-4 py-2 rounded-xl text-xs font-semibold whitespace-nowrap transition-all border ${isActive
+                        ? "bg-[#025864] text-white border-[#025864]"
+                        : "bg-white text-[#6B7280] border-[#E5E7EB] hover:border-[#025864]/30"
+                        }`}
+                    >
+                      {qd.label.charAt(0).toUpperCase() + qd.label.slice(1)}
+                    </button>
+                  );
+                })}
+              </div>
+
+              <div className="relative group">
+                <div className="absolute left-4 top-1/2 -translate-y-1/2 text-[#9CA3AF] group-focus-within:text-[#025864] transition-colors">
+                  <Calendar className="w-5 h-5" />
+                </div>
+                <input
+                  type="date"
+                  value={transactionDate}
+                  onChange={(e) => setTransactionDate(e.target.value)}
+                  className="w-full pl-12 pr-4 py-3 bg-white border border-[#E5E7EB] focus:border-[#025864] focus:ring-1 focus:ring-[#025864] rounded-2xl text-sm text-[#09090b] outline-none transition-all"
+                />
               </div>
             </div>
 
