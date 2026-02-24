@@ -6,7 +6,7 @@ import { toast, Toaster } from 'sonner';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../components/ui/card';
-import simpleItLogo from '../../assets/simple_it_logo.png';
+
 
 export function Login() {
   const navigate = useNavigate();
@@ -118,13 +118,23 @@ export function Login() {
               </Button>
 
               {/* Forgot Password Link */}
-              <div className="text-center">
+              <div className="text-center space-y-2 flex flex-col items-center">
                 <button
                   type="button"
                   className="text-sm text-[var(--primary-main)] hover:text-[var(--primary-dark)] font-medium transition-colors hover:underline"
                 >
                   ¿Olvidaste tu contraseña?
                 </button>
+                <div className="text-sm text-[var(--neutral-600)]">
+                  ¿No tienes cuenta?{' '}
+                  <button
+                    type="button"
+                    onClick={() => navigate('/signup')}
+                    className="text-[var(--primary-main)] hover:text-[var(--primary-dark)] font-medium transition-colors hover:underline"
+                  >
+                    Regístrate
+                  </button>
+                </div>
               </div>
             </form>
           </CardContent>
@@ -138,51 +148,6 @@ export function Login() {
             <span className="text-xl font-black tracking-tighter text-[#111827]">Simple</span>
             <span className="text-xl font-light tracking-tighter text-[#025864]">IT</span>
           </div>
-        </div>
-
-        {/* Test Credentials - Moved down slightly */}
-        <div className="mt-10">
-          <Card variant="outline" className="bg-[var(--neutral-50)]">
-            <CardContent className="pt-6">
-              <p className="text-sm font-semibold text-[var(--neutral-900)] mb-3">Credenciales de prueba:</p>
-              <div className="space-y-2">
-                <div className="flex items-center justify-between p-2 bg-white rounded-lg border border-[var(--neutral-200)]">
-                  <div>
-                    <p className="font-medium text-[var(--neutral-900)] text-sm">Usuario Personal</p>
-                    <p className="text-xs text-[var(--neutral-500)]">santi@test.com / santi123</p>
-                  </div>
-                  <Button
-                    size="sm"
-                    variant="secondary"
-                    className="h-7 px-2 text-xs"
-                    onClick={() => {
-                      setEmail('santi@test.com');
-                      setPassword('santi123');
-                    }}
-                  >
-                    Usar
-                  </Button>
-                </div>
-                <div className="flex items-center justify-between p-2 bg-white rounded-lg border border-[var(--neutral-200)]">
-                  <div>
-                    <p className="font-medium text-[var(--neutral-900)] text-sm">Admin B2B</p>
-                    <p className="text-xs text-[var(--neutral-500)]">carla@test.com / carla123</p>
-                  </div>
-                  <Button
-                    size="sm"
-                    variant="secondary"
-                    className="h-7 px-2 text-xs"
-                    onClick={() => {
-                      setEmail('carla@test.com');
-                      setPassword('carla123');
-                    }}
-                  >
-                    Usar
-                  </Button>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
         </div>
       </div>
     </div>

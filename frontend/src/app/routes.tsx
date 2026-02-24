@@ -3,6 +3,7 @@ import { Dashboard } from "./pages/Dashboard";
 import { Analytics } from "./pages/Analytics";
 import { History } from "./pages/History";
 import { Login } from "./pages/Login";
+import { SignUp } from "./pages/SignUp";
 import { Settings } from "./pages/Settings";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import { Layout } from "./components/Layout";
@@ -13,6 +14,10 @@ export const router = createBrowserRouter([
   {
     path: "/login",
     Component: Login,
+  },
+  {
+    path: "/signup",
+    Component: SignUp,
   },
   {
     path: "/",

@@ -10,6 +10,7 @@ interface AuthState {
 
 interface AuthContextType extends AuthState {
   signIn: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
+  signUp: (email: string, password: string, firstName: string, lastName: string) => Promise<{ success: boolean; error?: string; needsEmailConfirmation?: boolean }>;
   signOut: () => Promise<void>;
   updateProfile: (updates: Partial<Profile>) => Promise<void>;
 }
@@ -24,7 +25,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   });
 
   // Helper to fetch profile data without setting state
-  const getProfileData = async (userId: string): Promise<Profile | null> => {
+  const getProfileData = async (userId: string, retries = 3): Promise<Profile | null> => {
     try {
       const { data, error } = await supabase
         .from('profiles')
@@ -33,6 +34,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         .single();
 
       if (error) {
+        // PGRST116 is the error for "JSON object requested, multiple (or no) rows returned"
+        // This can happen right after signup if the DB trigger hasn't finished creating the profile
+        if (error.code === 'PGRST116' && retries > 0) {
+          console.warn(`[Auth] Profile not found for ${userId}, retrying... (${retries} attempts left)`);
+          await new Promise(resolve => setTimeout(resolve, 1000));
+          return getProfileData(userId, retries - 1);
+        }
+
         if (error.message && (error.message.includes('AbortError') || error.message.includes('aborted'))) {
           return null;
         }
@@ -145,7 +154,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signIn = async (email: string, password: string): Promise<{ success: boolean; error?: string }> => {
     try {
-      const { error } = await supabase.auth.signInWithPassword({
+      const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
@@ -154,10 +163,48 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return { success: false, error: error.message };
       }
 
+      // Fallback: If onAuthStateChange doesn't fire (e.g., already signed in but profile fetch previously failed)
+      if (data.session && (!state.profile || state.user?.id !== data.session.user.id)) {
+        setState(prev => ({ ...prev, user: data.session.user, loading: true }));
+        const profile = await getProfileData(data.session.user.id);
+        setState({
+          user: data.session.user,
+          profile,
+          loading: false
+        });
+      }
+
       // onAuthStateChange(SIGNED_IN) handles everything else
       return { success: true };
     } catch (err: any) {
       return { success: false, error: err.message || 'Error inesperado' };
+    }
+  };
+
+  const signUp = async (email: string, password: string, firstName: string, lastName: string): Promise<{ success: boolean; error?: string; needsEmailConfirmation?: boolean }> => {
+    try {
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: {
+            first_name: firstName,
+            last_name: lastName,
+            full_name: `${firstName} ${lastName}`.trim(),
+            name: `${firstName} ${lastName}`.trim(),
+          },
+        },
+      });
+
+      if (error) {
+        return { success: false, error: error.message };
+      }
+
+      // If session is null, it means email confirmation is required and enabled
+      const needsEmailConfirmation = !data.session;
+      return { success: true, needsEmailConfirmation };
+    } catch (err: any) {
+      return { success: false, error: err.message || 'Error inesperado al registrarse' };
     }
   };
 
@@ -216,7 +263,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ ...state, signIn, signOut, updateProfile }}>
+    <AuthContext.Provider value={{ ...state, signIn, signUp, signOut, updateProfile }}>
       {children}
     </AuthContext.Provider>
   );
