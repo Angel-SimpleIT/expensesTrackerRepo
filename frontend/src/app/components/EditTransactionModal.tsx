@@ -187,6 +187,7 @@ export function EditTransactionModal({ transaction, categories, onClose, onSave,
                   <SelectContent className="bg-white border-[#E5E7EB] shadow-lg">
                     <SelectItem value="USD">USD ($)</SelectItem>
                     <SelectItem value="EUR">EUR (€)</SelectItem>
+                    <SelectItem value="BRL">BRL (R$)</SelectItem>
                     <SelectItem value="PYG">PYG (Gs)</SelectItem>
                     <SelectItem value="UYU">UYU ($U)</SelectItem>
                     <SelectItem value="ARS">ARS ($)</SelectItem>
