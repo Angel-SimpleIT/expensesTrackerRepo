@@ -20,7 +20,7 @@ Deno.serve(async (req) => {
 
         // 2. Fetch from Fixer
         // Free plan uses EUR as base currency by default
-        const symbols = 'USD,EUR,MXN,ARS,COP,UYU'
+        const symbols = 'USD,EUR,MXN,ARS,COP,UYU,BRL,PYG'
         const fixerUrl = `http://data.fixer.io/api/latest?access_key=${fixerApiKey}&symbols=${symbols}`
 
         console.log(`Fetching exchange rates from Fixer API... symbols: ${symbols}`)
