@@ -1,10 +1,12 @@
 import { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { MessageSquare, Link, CheckCircle, XCircle, Copy, ExternalLink } from 'lucide-react';
+import { MessageSquare, Link, CheckCircle, XCircle, Copy, ExternalLink, AlertTriangle } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '../components/ui/button';
 import { Badge } from '../components/ui/badge';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '../components/ui/card';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '../components/ui/alert-dialog';
+import { supabase } from '../../utils/supabase';
 
 const WHATSAPP_BOT_NUMBER = '123456789'; // Reemplaza con tu número de bot real
 
@@ -12,6 +14,29 @@ export function Settings() {
   const { profile, updateProfile } = useAuth();
   const [pairingCode, setPairingCode] = useState<string | null>(profile?.pairing_code || null);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  const handleDeleteAccount = async () => {
+    setIsDeleting(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+
+      const { data, error } = await supabase.functions.invoke('delete-user-account', {
+        headers: {
+          Authorization: `Bearer ${session?.access_token}`
+        }
+      });
+
+      if (error) throw error;
+
+      await supabase.auth.signOut();
+      toast.success('Tu cuenta ha sido eliminada correctamente.');
+    } catch (error: any) {
+      console.error('Error deleting account:', error);
+      toast.error('Hubo un error al eliminar tu cuenta. Por favor, contacta a soporte.');
+      setIsDeleting(false);
+    }
+  };
 
   // Generar código de 6 dígitos
   const generatePairingCode = async () => {
@@ -233,6 +258,51 @@ export function Settings() {
                 </Badge>
               </div>
             </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Zona de Peligro */}
+      <Card className="mt-8 border-red-200">
+        <CardHeader>
+          <CardTitle className="text-base text-red-600 flex items-center gap-2">
+            <AlertTriangle className="w-5 h-5" />
+            Zona de Peligro
+          </CardTitle>
+          <CardDescription>
+            Acciones destructivas para tu cuenta.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-lg bg-red-50/50 border border-red-100">
+            <div>
+              <p className="text-sm font-medium text-gray-900">Eliminar cuenta</p>
+              <p className="text-sm text-gray-500 mt-1">
+                Esto eliminará permanentemente tu cuenta y todos tus datos después de 30 días. Esta acción no se puede deshacer.
+              </p>
+            </div>
+
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button variant="destructive" className="shrink-0">
+                  Eliminar mi cuenta
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>¿Estás absolutamente seguro?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    Esta acción no se puede deshacer. Tu cuenta será desactivada y tus datos serán eliminados permanentemente después de 30 días.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel disabled={isDeleting}>Cancelar</AlertDialogCancel>
+                  <AlertDialogAction onClick={(e) => { e.preventDefault(); handleDeleteAccount(); }} className="bg-red-600 hover:bg-red-700 text-white focus:ring-red-600" disabled={isDeleting}>
+                    {isDeleting ? 'Eliminando...' : 'Sí, eliminar mi cuenta'}
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
           </div>
         </CardContent>
       </Card>

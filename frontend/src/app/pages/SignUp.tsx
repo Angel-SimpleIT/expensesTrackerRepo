@@ -6,6 +6,8 @@ import { toast, Toaster } from 'sonner';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../components/ui/card';
+import { Checkbox } from '../components/ui/checkbox';
+import { TermsAndConditionsModal } from '../components/auth/TermsAndConditionsModal';
 
 export function SignUp() {
     const navigate = useNavigate();
@@ -15,6 +17,8 @@ export function SignUp() {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
+    const [termsAccepted, setTermsAccepted] = useState(false);
+    const [isTermsModalOpen, setIsTermsModalOpen] = useState(false);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
     const [success, setSuccess] = useState(false);
@@ -40,6 +44,11 @@ export function SignUp() {
 
         if (!lastName.trim()) {
             setError('Por favor ingresa tu apellido');
+            return;
+        }
+
+        if (!termsAccepted) {
+            setError('Debes aceptar los Términos y Condiciones para continuar');
             return;
         }
 
@@ -223,6 +232,33 @@ export function SignUp() {
                                 </div>
                             )}
 
+                            {/* Terms and Conditions */}
+                            <div className="flex items-start space-x-2 pt-2">
+                                <Checkbox
+                                    id="terms"
+                                    checked={termsAccepted}
+                                    onCheckedChange={(checked) => setTermsAccepted(checked as boolean)}
+                                />
+                                <div className="grid gap-1.5 leading-none">
+                                    <label
+                                        htmlFor="terms"
+                                        className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 text-[var(--neutral-700)] cursor-pointer"
+                                    >
+                                        Acepto los{' '}
+                                        <button
+                                            type="button"
+                                            onClick={(e) => {
+                                                e.preventDefault();
+                                                setIsTermsModalOpen(true);
+                                            }}
+                                            className="text-[var(--primary-main)] hover:underline font-semibold"
+                                        >
+                                            Términos y Condiciones
+                                        </button>
+                                    </label>
+                                </div>
+                            </div>
+
                             {/* Submit Button */}
                             <Button
                                 type="submit"
@@ -259,6 +295,11 @@ export function SignUp() {
                     </div>
                 </div>
             </div>
+
+            <TermsAndConditionsModal
+                isOpen={isTermsModalOpen}
+                onClose={() => setIsTermsModalOpen(false)}
+            />
         </div>
     );
 }
