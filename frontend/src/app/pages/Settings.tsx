@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { MessageSquare, Link, CheckCircle, XCircle, Copy, ExternalLink, AlertTriangle } from 'lucide-react';
 import { toast } from 'sonner';
@@ -11,10 +11,42 @@ import { supabase } from '../../utils/supabase';
 const WHATSAPP_BOT_NUMBER = '123456789'; // Reemplaza con tu número de bot real
 
 export function Settings() {
-  const { profile, updateProfile } = useAuth();
+  const { profile, updateProfile, user } = useAuth();
   const [pairingCode, setPairingCode] = useState<string | null>(profile?.pairing_code || null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+
+  // Suscribirse a cambios en el perfil para actualización en tiempo real (vinculación WhatsApp)
+  useEffect(() => {
+    if (!user?.id) return;
+
+    const channel = supabase
+      .channel(`profile_changes_${user.id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'profiles',
+          filter: `id=eq.${user.id}`,
+        },
+        (payload) => {
+          console.log('🔄 Perfil actualizado en tiempo real:', payload.new);
+          // Actualizamos el estado local del código si cambió
+          if (payload.new.pairing_code !== undefined) {
+            setPairingCode(payload.new.pairing_code);
+          }
+          // El profile en useAuth debería actualizarse si implementamos el refresco ahí,
+          // o podemos forzar una actualización local si es necesario.
+          // Por ahora, confiamos en que useAuth lo maneje o refrescamos manualmente si es necesario.
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [user?.id]);
 
   const handleDeleteAccount = async () => {
     setIsDeleting(true);
@@ -41,18 +73,16 @@ export function Settings() {
   // Generar código de 6 dígitos
   const generatePairingCode = async () => {
     setIsGenerating(true);
-
-    // Simular llamada al backend
-    await new Promise(resolve => setTimeout(resolve, 500));
-
     const code = Math.floor(100000 + Math.random() * 900000).toString();
-    setPairingCode(code);
-
-    // Actualizar el perfil (en producción esto se guardaría en el backend)
-    updateProfile({ pairing_code: code });
-
-    toast.success('Código de conexión generado');
-    setIsGenerating(false);
+    try {
+      await updateProfile({ pairing_code: code });
+      setPairingCode(code);
+      toast.success('Código de conexión generado. Envialo por WhatsApp.');
+    } catch (error) {
+      toast.error('Error al generar el código.');
+    } finally {
+      setIsGenerating(false);
+    }
   };
 
   // Copiar código al portapapeles
@@ -177,22 +207,12 @@ export function Settings() {
                   <p className="text-sm text-[#0C4A6E] leading-relaxed">
                     <strong>Pasos para conectar:</strong>
                     <br />
-                    1. Haz clic en "Abrir WhatsApp"
+                    1. Haz clic en <strong>"Abrir WhatsApp"</strong> o enviá manualmente el código.
                     <br />
-                    2. Envía el mensaje automático al bot
+                    2. El mensaje debe ser: <code>CONECTAR {pairingCode}</code>
                     <br />
-                    3. El bot confirmará tu conexión
+                    3. Una vez enviado, esta pantalla se actualizará automáticamente.
                   </p>
-                </div>
-
-                {/* Botón de prueba - Solo para desarrollo */}
-                <div className="pt-2 border-t border-[#E5E7EB]">
-                  <button
-                    onClick={simulateConnection}
-                    className="w-full py-2 text-xs text-[#6B7280] hover:text-[#025864] transition-colors"
-                  >
-                    🔧 Simular conexión (modo desarrollo)
-                  </button>
                 </div>
 
                 <Button
