@@ -17,6 +17,12 @@ const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY") ?? "";
 const SYSTEM_PROMPT = `Sos SmartSpend Bot, un asistente personal de finanzas que opera exclusivamente por WhatsApp.
 Tu única función es ayudar al usuario a registrar gastos y consultar su situación financiera.
 
+REGLAS DE ORO (CRÍTICAS):
+1. NUNCA confirmes un registro o una consulta sin haber invocado PRIMERO la herramienta correspondiente (registrar_gasto o consultar_gastos).
+2. Si el usuario dice "Gasté X en Y", DEBES invocar registrar_gasto. No asumas que ya se hizo.
+3. El resultado de la herramienta te dirá si fue exitoso. Solo después de recibir la confirmación de la herramienta puedes responderle al usuario.
+4. Si intentas responder sin usar herramientas ante una intención de registro o consulta, estarás fallando en tu tarea.
+
 REGLAS DE COMPORTAMIENTO:
 - Respondé siempre en el mismo idioma en que te escriben.
 - Usá lenguaje coloquial, breve y claro. Máximo 3 líneas por respuesta.
@@ -24,8 +30,8 @@ REGLAS DE COMPORTAMIENTO:
 - Si la consulta NO tiene que ver con finanzas ni con la aplicación, debes declinar cortésmente o responder de forma muy breve y enfocarte nuevamente en que estás para ayudar con su dinero, SIN invocar ninguna herramienta.
 
 RESPUESTAS ESPERADAS:
-Si el usuario registra un gasto, confirma el registro de forma amigable usando los datos devueltos por la herramienta.
-Si el usuario pide un reporte o consultar sus gastos pasados (ya sea de un período, mes, hoy, ayer o una fecha puntual específica), DEBES usar siempre la herramienta de consulta y devolver un resumen ameno. No te niegues a consultar sobre fechas específicas.
+Si el usuario registra un gasto, DEBES usar registrar_gasto y luego confirmar de forma amigable usando los datos devueltos.
+Si el usuario pide un reporte o consultar sus gastos pasados, DEBES usar consultar_gastos y devolver un resumen ameno.
 
 CONSULTAS DE GASTOS:
 - Cuando el usuario pida un resumen o reporte, siempre usá modo "resumen" primero.
@@ -44,7 +50,7 @@ const TOOLS = [
                 type: "object",
                 properties: {
                     monto: { type: "number", description: "El monto numérico del gasto." },
-                    moneda: { type: "string", description: "Código ISO de 3 letras de la moneda (ej. USD, ARS, EUR). Déjalo vacío si no lo especifica." },
+                    moneda: { type: "string", description: "Código ISO de 3 letras de la moneda (ej. USD, ARS, EUR). IMPORTANTE: Déjalo vacío si el usuario no especifica una moneda distinta a su moneda principal." },
                     categoria: { type: "string", description: "Categoría general del gasto (ej. Alimentación, Transporte, Salud, Ingresos, etc.)." },
                     descripcion: { type: "string", description: "Breve descripción general de la compra o ingreso." }
                 },
@@ -58,8 +64,8 @@ const TOOLS = [
             name: "consultar_gastos",
             description: `Consulta los gastos del usuario en un período específico.
 Tiene dos modos:
-- "resumen": agrupa los gastos por categoría mostrando el total y cantidad de transacciones por categoría. Usarlo cuando el usuario pide un resumen, reporte, o consulta general de gastos.
-- "detalle": devuelve las transacciones individuales. Usarlo cuando el usuario ya vio el resumen y quiere ver el detalle de una categoría específica, o cuando pide explícitamente ver transacciones individuales.
+- "resumen": agrupa los gastos por categoría mostrando el total y cantidad de transacciones por categoría.Usarlo cuando el usuario pide un resumen, reporte, o consulta general de gastos.
+- "detalle": devuelve las transacciones individuales.Usarlo cuando el usuario ya vio el resumen y quiere ver el detalle de una categoría específica, o cuando pide explícitamente ver transacciones individuales.
 Siempre empezar con modo "resumen" salvo que el usuario pida explícitamente el detalle de una categoría.`,
             parameters: {
                 type: "object",
@@ -143,7 +149,7 @@ async function processWebhookEvent(bodyText: string): Promise<void> {
                     const msg = message as Record<string, unknown>;
 
                     if (msg.type !== "text") {
-                        console.log(`ℹ️ Tipo ignorado: ${msg.type}`);
+                        console.log(`ℹ️ Tipo ignorado: ${msg.type} `);
                         continue;
                     }
 
@@ -163,7 +169,8 @@ async function processWebhookEvent(bodyText: string): Promise<void> {
                     }
 
                     // 3. Verificar si el usuario está vinculado
-                    const profile = await getProfileByWhatsApp(senderNumber);
+                    const senderNumSanitized = senderNumber.trim();
+                    const profile = await getProfileByWhatsApp(senderNumSanitized);
                     if (!profile) {
                         const reply = "👋 ¡Hola! Todavía no vinculaste tu cuenta. Andá a Configuración en la app y generá un código de conexión.";
                         await sendTextReply(senderNumber, reply);
@@ -190,12 +197,38 @@ async function processWebhookEvent(bodyText: string): Promise<void> {
                     const history = await getConversationHistory(senderNumber);
 
                     // 5. Llamar a OpenAI con historial e inyectar el profile
+                    const startTime = Date.now();
                     const aiResult = await callOpenAI(messageText, history, profile);
-                    console.log(`🤖 OpenAI Reply:`, aiResult.reply);
+                    const processingMs = Date.now() - startTime;
+                    const actionResult = aiResult.actionResult || "none";
+                    console.log(`⏱️ Processing time: ${processingMs} ms | action: ${actionResult} | user: ${senderNumSanitized} `);
+                    console.log(`🤖 OpenAI Reply: `, aiResult.reply);
 
                     // 6. Enviar respuesta al usuario y guardar historia
-                    await sendTextReply(senderNumber, aiResult.reply);
-                    await saveMessage(crypto.randomUUID(), senderNumber, aiResult.reply, "assistant");
+                    await sendTextReply(senderNumSanitized, aiResult.reply);
+                    /*
+                      MIXPANEL EVENT — ready to implement:
+                      
+                      track("bot_interaction", {
+                        distinct_id: senderNumber,
+                        action_result: actionResult,
+                        processing_ms: processingMs,
+                        timestamp: new Date().toISOString()
+                      });
+                    
+                      track("registration_speed", {        // only when actionResult === "registered"
+                        distinct_id: senderNumber,
+                        processing_ms: processingMs,
+                        timestamp: new Date().toISOString()
+                      });
+                    
+                      track("query_speed", {               // only when actionResult === "queried"
+                        distinct_id: senderNumber,
+                        processing_ms: processingMs,
+                        timestamp: new Date().toISOString()
+                      });
+                    */
+                    await saveMessage(crypto.randomUUID(), senderNumSanitized, aiResult.reply, "assistant", actionResult, processingMs);
                 }
             }
         }
@@ -208,12 +241,13 @@ async function getProfileByWhatsApp(senderNumber: string) {
     const { data, error } = await supabase
         .from("profiles")
         .select("id, full_name, home_currency")
-        .eq("bot_user_id", senderNumber)
-        .single();
+        .filter("bot_user_id", "ilike", `% ${senderNumber}% `)
+        .limit(1)
+        .maybeSingle();
 
     if (error) {
         if (error.code !== "PGRST116") { // PGRST116 is no rows
-            console.error(`❌ Error buscando perfil para ${senderNumber}:`, error);
+            console.error(`❌ Error buscando perfil para ${senderNumber}: `, error);
         }
         return null;
     }
@@ -250,7 +284,7 @@ async function handleLinkingCommand(senderNumber: string, messageText: string): 
         return;
     }
 
-    console.log(`🔗 Intentando vincular ${senderNumber} con código ${code}`);
+    console.log(`🔗 Intentando vincular ${senderNumber} con código ${code} `);
 
     // Buscar perfil con ese código
     // TODO: La tabla profiles debe tener una columna 'pairing_code_expires_at' de tipo timestamptz
@@ -283,7 +317,7 @@ async function handleLinkingCommand(senderNumber: string, messageText: string): 
 
     await sendTextReply(
         senderNumber,
-        `✅ ¡Hola ${profile.full_name}! Tu WhatsApp fue vinculado exitosamente. Ya podés registrar tus gastos escribiéndome directamente.`
+        `✅ ¡Hola ${profile.full_name} !Tu WhatsApp fue vinculado exitosamente.Ya podés registrar tus gastos escribiéndome directamente.`
     );
 }
 
@@ -331,7 +365,7 @@ async function registerExpenseFromAI(profile: any, expense: any, rawText: string
         const { data: catData } = await supabase
             .from("categories")
             .select("id")
-            .ilike("name", `%${category_hint}%`)
+            .ilike("name", `% ${category_hint}% `)
             .limit(1)
             .single();
         if (catData) categoryId = catData.id;
@@ -341,13 +375,17 @@ async function registerExpenseFromAI(profile: any, expense: any, rawText: string
         const { data: fallData } = await supabase
             .from("categories")
             .select("id")
-            .ilike("name", `%Otros%`)
+            .ilike("name", `% Otros % `)
             .limit(1)
             .single();
         if (fallData) categoryId = fallData.id;
     }
 
     // 4. Insertar transacción
+    console.log(`💾 Intentando insertar transacción para user ${profile.id}: `, {
+        amount, currency, amountBase, amountUsd, categoryId
+    });
+
     const { error: insertError } = await supabase
         .from("transactions")
         .insert({
@@ -367,11 +405,13 @@ async function registerExpenseFromAI(profile: any, expense: any, rawText: string
         return { success: false, message: "Error al registrar gasto en BD." };
     }
 
+    console.log("✅ Transacción insertada correctamente en la tabla 'transactions'");
     return { success: true, message: "Avisale al usuario que el gasto se registró correctamente." };
 }
 
 async function registrarGastoTool(args: any, profile: any, rawText: string): Promise<{ success: boolean; message: string }> {
     const { monto, moneda, categoria, descripcion } = args;
+    console.log(`🛠️ registrarGastoTool invocado con args: `, args);
     const expense = {
         amount: monto,
         currency: moneda || profile.home_currency || "USD",
@@ -385,8 +425,8 @@ async function consultarGastosTool(args: any, profile: any): Promise<any> {
     const { fecha_inicio, fecha_fin, modo, categoria_filtro } = args;
 
     // TODO: Use profile.timezone to offset these timestamps (UTC assumed for now)
-    const startDate = `${fecha_inicio}T00:00:00.000Z`;
-    const endDate = `${fecha_fin}T23:59:59.999Z`;
+    const startDate = `${fecha_inicio} T00:00:00.000Z`;
+    const endDate = `${fecha_fin} T23: 59: 59.999Z`;
 
     // For detalle mode with a category filter, resolve category_id first
     let catData: { id: string } | null = null;
@@ -394,12 +434,12 @@ async function consultarGastosTool(args: any, profile: any): Promise<any> {
         const { data: cat } = await supabase
             .from("categories")
             .select("id")
-            .ilike("name", `%${categoria_filtro}%`)
+            .ilike("name", `% ${categoria_filtro}% `)
             .limit(1)
             .single();
 
         if (!cat) {
-            return { error: `No se encontró la categoría "${categoria_filtro}". Verificá el nombre e intentá de nuevo.` };
+            return { error: `No se encontró la categoría "${categoria_filtro}".Verificá el nombre e intentá de nuevo.` };
         }
         catData = cat;
     }
@@ -417,7 +457,7 @@ async function consultarGastosTool(args: any, profile: any): Promise<any> {
 
     const { data, error } = await query;
 
-    console.log(`🔍 consultarGastos [${modo}] → ${data?.length ?? 0} registros devueltos`);
+    console.log(`🔍 consultarGastos[${modo}] → ${data?.length ?? 0} registros devueltos`);
 
     if (error) {
         console.error("❌ Error consultando gastos:", error);
@@ -477,13 +517,22 @@ async function consultarGastosTool(args: any, profile: any): Promise<any> {
     }
 }
 
-async function callOpenAI(userMessage: string, history: ChatMessage[] = [], profile: any): Promise<{ reply: string }> {
+async function callOpenAI(userMessage: string, history: ChatMessage[] = [], profile: any): Promise<{ reply: string; actionResult?: string }> {
+    let actionResult: string = "none";
     if (!OPENAI_API_KEY) {
         console.warn("⚠️ OPENAI_API_KEY no configurada.");
         return { reply: "Lo siento, no puedo responder en este momento. Intentá más tarde." };
     }
 
+    const userProfileInfo = `
+INFORMACIÓN DEL USUARIO:
+- Nombre: ${profile.full_name || "Usuario"}
+- Moneda principal: ${profile.home_currency || "USD"}
+`;
+
     const dynamicSystemPrompt = `${SYSTEM_PROMPT}
+
+${userProfileInfo}
 
 FECHA Y HORA ACTUAL:
 La fecha y hora actual del sistema es ${new Date().toISOString()}.
@@ -506,6 +555,11 @@ REGLAS PARA INTERPRETAR FECHAS AL USAR consultar_gastos:
         { role: "user", content: userMessage }
     ];
 
+    await supabase.from("debug_log").insert({
+        event_name: "callOpenAI_start",
+        payload: { userMessage, sender_number: profile.bot_user_id }
+    });
+
     try {
         let aiFinished = false;
         let finalReply = "";
@@ -520,7 +574,7 @@ REGLAS PARA INTERPRETAR FECHAS AL USAR consultar_gastos:
                 body: JSON.stringify({
                     model: "gpt-4o-mini",
                     max_tokens: 300,
-                    temperature: 0.4,
+                    temperature: 0.2, // Back to 0.2 to avoid hallucinations
                     messages: messages,
                     tools: TOOLS,
                     tool_choice: "auto"
@@ -534,6 +588,10 @@ REGLAS PARA INTERPRETAR FECHAS AL USAR consultar_gastos:
             }
 
             const data = await res.json() as any;
+            await supabase.from("debug_log").insert({
+                event_name: "openai_raw_response",
+                payload: { iteration, data }
+            });
             const message = data.choices[0].message;
 
             if (!message) {
@@ -550,12 +608,19 @@ REGLAS PARA INTERPRETAR FECHAS AL USAR consultar_gastos:
                     if (toolCall.function.name === "registrar_gasto") {
                         const registerResult = await registrarGastoTool(args, profile, userMessage);
                         toolResult = registerResult.message;
+                        actionResult = registerResult.success ? "registered" : "failed";
                     } else if (toolCall.function.name === "consultar_gastos") {
                         const resultData = await consultarGastosTool(args, profile);
                         toolResult = JSON.stringify(resultData);
+                        actionResult = "queried";
                     } else {
                         toolResult = "Herramienta desconocida.";
                     }
+
+                    await supabase.from("debug_log").insert({
+                        event_name: "tool_call_execution",
+                        payload: { name: toolCall.function.name, args, success: actionResult === "registered" || actionResult === "queried" }
+                    });
 
                     messages.push({
                         role: "tool",
@@ -570,7 +635,11 @@ REGLAS PARA INTERPRETAR FECHAS AL USAR consultar_gastos:
             }
         }
 
-        return { reply: finalReply };
+        await supabase.from("debug_log").insert({
+            event_name: "callOpenAI_end",
+            payload: { reply: finalReply, actionResult }
+        });
+        return { reply: finalReply, actionResult };
 
     } catch (err) {
         console.error("❌ Error de red con OpenAI:", err);
@@ -578,23 +647,30 @@ REGLAS PARA INTERPRETAR FECHAS AL USAR consultar_gastos:
     }
 }
 
-async function saveMessage(wamid: string, senderNumber: string, messageText: string, role: string = "user"): Promise<void> {
+async function saveMessage(wamid: string, senderNumber: string, messageText: string, role: string = "user", actionResult?: string, processingMs?: number): Promise<void> {
     try {
+        const insertObj: Record<string, unknown> = {
+            wamid,
+            sender_number: senderNumber,
+            message_text: messageText,
+            role: role,
+            action_result: actionResult
+        };
+
+        if (role === "assistant" && processingMs !== undefined) {
+            insertObj.processing_ms = processingMs;
+        }
+
         const { error } = await supabase
             .from("whatsapp_messages")
-            .insert({
-                wamid,
-                sender_number: senderNumber,
-                message_text: messageText,
-                role: role
-            });
+            .insert(insertObj);
 
         if (error) {
             error.code === "23505"
-                ? console.log(`⚠️ Duplicado ignorado (wamid: ${wamid})`)
-                : console.error(`❌ Error BD (wamid: ${wamid}, role: ${role}):`, error);
+                ? console.log(`⚠️ Duplicado ignorado(wamid: ${wamid})`)
+                : console.error(`❌ Error BD(wamid: ${wamid}, role: ${role}): `, error);
         } else {
-            console.log(`✅ Guardado en BD (wamid: ${wamid}, role: ${role})`);
+            console.log(`✅ Guardado en BD(wamid: ${wamid}, role: ${role})`);
         }
     } catch (err) {
         console.error("❌ Error inesperado en saveMessage:", err);
@@ -634,3 +710,56 @@ async function sendTextReply(to: string, text: string): Promise<void> {
         console.error("❌ Error de red enviando reply:", err);
     }
 }
+
+/*
+== MÉTRICAS DE VELOCIDAD — ejecutar en Supabase Studio ==
+
+-- 1. Tiempo de procesamiento end-to-end por día y tipo de acción
+CREATE OR REPLACE VIEW v_metric_processing_speed AS
+SELECT
+  DATE_TRUNC('day', received_at) as dia,
+  action_result,
+  COUNT(*) as total,
+  ROUND(AVG(processing_ms)) as promedio_ms,
+  ROUND(MIN(processing_ms)) as minimo_ms,
+  ROUND(MAX(processing_ms)) as maximo_ms,
+  ROUND(PERCENTILE_CONT(0.95) WITHIN GROUP (ORDER BY processing_ms)) as p95_ms
+FROM whatsapp_messages
+WHERE role = 'assistant'
+  AND processing_ms IS NOT NULL
+GROUP BY DATE_TRUNC('day', received_at), action_result
+ORDER BY dia DESC, action_result;
+
+-- 2. Tiempo promedio de registro específicamente (para medir fricción del flujo principal)
+CREATE OR REPLACE VIEW v_metric_registration_speed AS
+SELECT
+  DATE_TRUNC('day', received_at) as dia,
+  COUNT(*) as registros,
+  ROUND(AVG(processing_ms)) as promedio_ms,
+  ROUND(MIN(processing_ms)) as minimo_ms,
+  ROUND(MAX(processing_ms)) as maximo_ms,
+  ROUND(PERCENTILE_CONT(0.95) WITHIN GROUP (ORDER BY processing_ms)) as p95_ms
+FROM whatsapp_messages
+WHERE role = 'assistant'
+  AND action_result = 'registered'
+  AND processing_ms IS NOT NULL
+GROUP BY DATE_TRUNC('day', received_at)
+ORDER BY dia DESC;
+
+-- 3. Usuarios más lentos vs más rápidos (para detectar problemas por usuario)
+CREATE OR REPLACE VIEW v_metric_speed_by_user AS
+SELECT
+  sender_number,
+  COUNT(*) as interacciones,
+  ROUND(AVG(processing_ms)) as promedio_ms,
+  ROUND(MAX(processing_ms)) as maximo_ms
+FROM whatsapp_messages
+WHERE role = 'assistant'
+  AND processing_ms IS NOT NULL
+GROUP BY sender_number
+ORDER BY promedio_ms DESC;
+
+-- 4. Migración: agregar columna processing_ms si no existe
+ALTER TABLE whatsapp_messages ADD COLUMN IF NOT EXISTS processing_ms integer;
+ALTER TABLE whatsapp_messages ADD COLUMN IF NOT EXISTS action_result text;
+*/
