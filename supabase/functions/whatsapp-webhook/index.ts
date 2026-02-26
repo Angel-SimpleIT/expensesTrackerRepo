@@ -25,7 +25,13 @@ REGLAS DE COMPORTAMIENTO:
 
 RESPUESTAS ESPERADAS:
 Si el usuario registra un gasto, confirma el registro de forma amigable usando los datos devueltos por la herramienta.
-Si el usuario pide un reporte, usa la herramienta de consulta y devuelve un resumen ameno.
+Si el usuario pide un reporte o consultar sus gastos pasados (ya sea de un período, mes, hoy, ayer o una fecha puntual específica), DEBES usar siempre la herramienta de consulta y devolver un resumen ameno. No te niegues a consultar sobre fechas específicas.
+
+CONSULTAS DE GASTOS:
+- Cuando el usuario pida un resumen o reporte, siempre usá modo "resumen" primero.
+- Al responder un resumen, listá las categorías de mayor a menor gasto y al final SIEMPRE invitá al usuario a pedir el detalle de cualquier categoría. Ejemplo: "¿Querés ver el detalle de alguna categoría?"
+- Cuando el usuario pida el detalle de una categoría (ej: "mostrame los de Alimentación", "¿qué gasté en Transporte?"), usá modo "detalle" con el campo categoria_filtro.
+- En modo detalle, listá cada transacción con descripción, monto y fecha. Máximo 10 líneas. Si hay más, indicá cuántas hay en total y sugerí acotar el rango de fechas.
 `;
 
 const TOOLS = [
@@ -50,16 +56,33 @@ const TOOLS = [
         type: "function",
         function: {
             name: "consultar_gastos",
-            description: "Consulta los gastos acumulados en un periodo específico para este usuario.",
+            description: `Consulta los gastos del usuario en un período específico.
+Tiene dos modos:
+- "resumen": agrupa los gastos por categoría mostrando el total y cantidad de transacciones por categoría. Usarlo cuando el usuario pide un resumen, reporte, o consulta general de gastos.
+- "detalle": devuelve las transacciones individuales. Usarlo cuando el usuario ya vio el resumen y quiere ver el detalle de una categoría específica, o cuando pide explícitamente ver transacciones individuales.
+Siempre empezar con modo "resumen" salvo que el usuario pida explícitamente el detalle de una categoría.`,
             parameters: {
                 type: "object",
                 properties: {
-                    periodo: {
+                    fecha_inicio: {
                         type: "string",
-                        description: "El periodo a consultar. Opciones: 'hoy', 'ayer', 'semana_actual', 'mes_actual', 'mes_pasado'"
+                        description: "Fecha de inicio del período en formato YYYY-MM-DD."
+                    },
+                    fecha_fin: {
+                        type: "string",
+                        description: "Fecha de fin del período en formato YYYY-MM-DD."
+                    },
+                    modo: {
+                        type: "string",
+                        enum: ["resumen", "detalle"],
+                        description: "resumen: agrupa por categoría. detalle: transacciones individuales."
+                    },
+                    categoria_filtro: {
+                        type: "string",
+                        description: "Solo para modo detalle. Nombre exacto de la categoría a desglosar. Dejar vacío para traer todas."
                     }
                 },
-                required: ["periodo"]
+                required: ["fecha_inicio", "fecha_fin", "modo"]
             }
         }
     }
@@ -144,7 +167,22 @@ async function processWebhookEvent(bodyText: string): Promise<void> {
                     if (!profile) {
                         const reply = "👋 ¡Hola! Todavía no vinculaste tu cuenta. Andá a Configuración en la app y generá un código de conexión.";
                         await sendTextReply(senderNumber, reply);
-                        await saveMessage(`reply-${wamid}`, senderNumber, reply, "assistant");
+                        await saveMessage(crypto.randomUUID(), senderNumber, reply, "assistant");
+                        continue;
+                    }
+
+                    // 3.5. Rate limiting básico
+                    const oneMinuteAgo = new Date(Date.now() - 60000).toISOString();
+                    const { count: msgCount } = await supabase
+                        .from("whatsapp_messages")
+                        .select("*", { count: "exact", head: true })
+                        .eq("sender_number", senderNumber)
+                        .gte("received_at", oneMinuteAgo);
+
+                    if (msgCount !== null && msgCount > 5) {
+                        const rateLimitReply = "Estás enviando demasiados mensajes. Por favor, esperá un minuto antes de enviar más.";
+                        await sendTextReply(senderNumber, rateLimitReply);
+                        await saveMessage(crypto.randomUUID(), senderNumber, rateLimitReply, "assistant");
                         continue;
                     }
 
@@ -157,7 +195,7 @@ async function processWebhookEvent(bodyText: string): Promise<void> {
 
                     // 6. Enviar respuesta al usuario y guardar historia
                     await sendTextReply(senderNumber, aiResult.reply);
-                    await saveMessage(`reply-${wamid}`, senderNumber, aiResult.reply, "assistant");
+                    await saveMessage(crypto.randomUUID(), senderNumber, aiResult.reply, "assistant");
                 }
             }
         }
@@ -182,7 +220,9 @@ async function getProfileByWhatsApp(senderNumber: string) {
     return data;
 }
 
-async function getConversationHistory(senderNumber: string): Promise<any[]> {
+type ChatMessage = { role: "user" | "assistant" | "system" | "tool"; content: string };
+
+async function getConversationHistory(senderNumber: string): Promise<ChatMessage[]> {
     const { data, error } = await supabase
         .from("whatsapp_messages")
         .select("role, message_text")
@@ -199,7 +239,7 @@ async function getConversationHistory(senderNumber: string): Promise<any[]> {
     return (data || []).reverse().map((m: any) => ({
         role: m.role || "user",
         content: m.message_text
-    }));
+    })) as ChatMessage[];
 }
 
 async function handleLinkingCommand(senderNumber: string, messageText: string): Promise<void> {
@@ -213,10 +253,12 @@ async function handleLinkingCommand(senderNumber: string, messageText: string): 
     console.log(`🔗 Intentando vincular ${senderNumber} con código ${code}`);
 
     // Buscar perfil con ese código
+    // TODO: La tabla profiles debe tener una columna 'pairing_code_expires_at' de tipo timestamptz
     const { data: profile, error: searchError } = await supabase
         .from("profiles")
         .select("id, full_name")
         .eq("pairing_code", code)
+        .gt("pairing_code_expires_at", new Date().toISOString())
         .single();
 
     if (searchError || !profile) {
@@ -245,7 +287,7 @@ async function handleLinkingCommand(senderNumber: string, messageText: string): 
     );
 }
 
-async function registerExpenseFromAI(profile: any, expense: any, rawText: string): Promise<boolean> {
+async function registerExpenseFromAI(profile: any, expense: any, rawText: string): Promise<{ success: boolean; message: string }> {
     const { amount, currency, description, category_hint } = expense;
     const homeCurrency = profile.home_currency || "USD";
 
@@ -258,7 +300,7 @@ async function registerExpenseFromAI(profile: any, expense: any, rawText: string
 
     if (ratesError || !ratesData) {
         console.error("❌ Error obteniendo tasas de cambio:", ratesError);
-        return false;
+        return { success: false, message: "Error al registrar gasto en BD." };
     }
 
     const baseCurrency = ratesData.base_currency;
@@ -267,45 +309,42 @@ async function registerExpenseFromAI(profile: any, expense: any, rawText: string
     // Asegurar que la base está en el objeto de tasas
     if (!rates[baseCurrency]) rates[baseCurrency] = 1;
 
+    // Verificar soporte de la moneda especificada
+    if (!rates[currency]) {
+        return { success: false, message: `La moneda ${currency} no está soportada.` };
+    }
+
     // 2. Calcular montos normalizando a la base y luego a USD/Home
     // Si 1 Base = R_curr CURR, entonces 1 CURR = 1/R_curr Base.
     // amount_base_curr = amount / rates[currency]
     // amount_usd = (amount / rates[currency]) * rates["USD"]
     const rateToUsd = rates["USD"] || 1;
     const rateToHome = rates[homeCurrency] || 1;
-    const rateFromCurr = rates[currency] || rates["USD"]; // Fallback a USD si la moneda no existe
+    const rateFromCurr = rates[currency];
 
     const amountUsd = (amount / rateFromCurr) * rateToUsd;
     const amountBase = (amount / rateFromCurr) * rateToHome;
 
-    // 3. Mapear categoría
-    const categories: Record<string, string> = {
-        "Alimentación": "a66f6091-4e93-4a52-b871-d617ab3c3d06",
-        "Transporte": "800d6bc2-e3db-44e1-99db-645f3462bb2a",
-        "Compras": "67c5708c-3cd0-40c4-9974-bef09d8397d5",
-        "Hogar": "142fa898-8e98-4c5c-8825-bf566c23d363",
-        "Café": "f1f29a0c-d32f-4796-b0b3-e9d9b338d891",
-        "Entretenimiento": "4cd280b9-af79-4c00-83e8-665d12b0a58f",
-        "Salud": "e38c1d45-e276-4b67-b041-ae6166104f16",
-        "Teléfono": "ef61c547-02ea-4d29-84cc-94e46e1420c0",
-        "Viajes": "6eab2da5-7911-4857-80a0-b54761fd0e64",
-        "Otros": "432d677f-2e18-4d7f-a545-e246400039ca",
-        "Ingresos": "588e5a5f-3088-4ec7-9585-b7763f640fb2",
-        "Mascotas": "e2fefbdc-8e71-430b-8a58-f0e7000e5e55",
-        "Sueldo": "f9f977fc-e4c0-401f-85bd-103bc47eddd8",
-        "Gastos Financieros": "5816b115-61a9-4be5-9dee-74bfe115cda6",
-        "Educación": "853f6fc6-38e2-4f1b-b90c-e7d28e8ef5c8",
-        "Delivery": "ac3d7b76-89b4-4b90-a4f2-b11b113cd954"
-    };
-
-    // Búsqueda difusa simple por nombre
-    let categoryId = categories["Otros"];
+    // 3. Mapear categoría vía DB
+    let categoryId = null;
     if (category_hint) {
-        const found = Object.entries(categories).find(([name]) =>
-            name.toLowerCase().includes(category_hint.toLowerCase()) ||
-            category_hint.toLowerCase().includes(name.toLowerCase())
-        );
-        if (found) categoryId = found[1];
+        const { data: catData } = await supabase
+            .from("categories")
+            .select("id")
+            .ilike("name", `%${category_hint}%`)
+            .limit(1)
+            .single();
+        if (catData) categoryId = catData.id;
+    }
+
+    if (!categoryId) {
+        const { data: fallData } = await supabase
+            .from("categories")
+            .select("id")
+            .ilike("name", `%Otros%`)
+            .limit(1)
+            .single();
+        if (fallData) categoryId = fallData.id;
     }
 
     // 4. Insertar transacción
@@ -325,13 +364,13 @@ async function registerExpenseFromAI(profile: any, expense: any, rawText: string
 
     if (insertError) {
         console.error("❌ Error insertando transacción:", insertError);
-        return false;
+        return { success: false, message: "Error al registrar gasto en BD." };
     }
 
-    return true;
+    return { success: true, message: "Avisale al usuario que el gasto se registró correctamente." };
 }
 
-async function registrarGastoTool(args: any, profile: any, rawText: string): Promise<boolean> {
+async function registrarGastoTool(args: any, profile: any, rawText: string): Promise<{ success: boolean; message: string }> {
     const { monto, moneda, categoria, descripcion } = args;
     const expense = {
         amount: monto,
@@ -343,61 +382,126 @@ async function registrarGastoTool(args: any, profile: any, rawText: string): Pro
 }
 
 async function consultarGastosTool(args: any, profile: any): Promise<any> {
-    const { periodo } = args;
-    let startDate = new Date();
-    let endDate = new Date();
+    const { fecha_inicio, fecha_fin, modo, categoria_filtro } = args;
 
-    startDate.setHours(0, 0, 0, 0);
-    endDate.setHours(23, 59, 59, 999);
+    // TODO: Use profile.timezone to offset these timestamps (UTC assumed for now)
+    const startDate = `${fecha_inicio}T00:00:00.000Z`;
+    const endDate = `${fecha_fin}T23:59:59.999Z`;
 
-    if (periodo === "ayer") {
-        startDate.setDate(startDate.getDate() - 1);
-        endDate.setDate(endDate.getDate() - 1);
-    } else if (periodo === "semana_actual") {
-        const day = startDate.getDay();
-        const diff = startDate.getDate() - day + (day === 0 ? -6 : 1);
-        startDate.setDate(diff);
-    } else if (periodo === "mes_actual") {
-        startDate.setDate(1);
-    } else if (periodo === "mes_pasado") {
-        startDate.setMonth(startDate.getMonth() - 1);
-        startDate.setDate(1);
-        endDate.setMonth(endDate.getMonth());
-        endDate.setDate(0);
+    // For detalle mode with a category filter, resolve category_id first
+    let catData: { id: string } | null = null;
+    if (modo === "detalle" && categoria_filtro) {
+        const { data: cat } = await supabase
+            .from("categories")
+            .select("id")
+            .ilike("name", `%${categoria_filtro}%`)
+            .limit(1)
+            .single();
+
+        if (!cat) {
+            return { error: `No se encontró la categoría "${categoria_filtro}". Verificá el nombre e intentá de nuevo.` };
+        }
+        catData = cat;
     }
 
-    const { data, error } = await supabase
+    let query = supabase
         .from("transactions")
-        .select(`
-            amount_base, 
-            merchant_name, 
-            created_at,
-            categories(name)
-        `)
+        .select("amount_base, merchant_name, created_at, categories(name)")
         .eq("user_id", profile.id)
-        .gte("created_at", startDate.toISOString())
-        .lte("created_at", endDate.toISOString());
+        .gte("created_at", startDate)
+        .lte("created_at", endDate);
+
+    if (modo === "detalle" && catData) {
+        query = query.eq("category_id", catData.id);
+    }
+
+    const { data, error } = await query;
+
+    console.log(`🔍 consultarGastos [${modo}] → ${data?.length ?? 0} registros devueltos`);
 
     if (error) {
         console.error("❌ Error consultando gastos:", error);
         return { error: "No se pudieron obtener los gastos de la base de datos." };
     }
 
-    return {
-        rango_consultado: { desde: startDate.toISOString().split("T")[0], hasta: endDate.toISOString().split("T")[0] },
-        moneda_base_usuario: profile.home_currency || "USD",
-        movimientos: data
-    };
+    const homeCurrency = profile.home_currency || "USD";
+
+    if (modo === "resumen") {
+        // Group by category client-side
+        const grouped: Record<string, { total: number; count: number }> = {};
+        let grandTotal = 0;
+
+        for (const tx of data || []) {
+            const catName = (tx.categories as any)?.name || "Sin categoría";
+            if (!grouped[catName]) grouped[catName] = { total: 0, count: 0 };
+            grouped[catName].total += tx.amount_base || 0;
+            grouped[catName].count += 1;
+            grandTotal += tx.amount_base || 0;
+        }
+
+        const categorias = Object.entries(grouped)
+            .sort((a, b) => b[1].total - a[1].total)
+            .map(([nombre, { total, count }]) => ({
+                categoria: nombre,
+                total: parseFloat(total.toFixed(2)),
+                porcentaje: grandTotal > 0 ? parseFloat(((total / grandTotal) * 100).toFixed(1)) : 0,
+                transacciones: count
+            }));
+
+        return {
+            modo: "resumen",
+            rango: { desde: fecha_inicio, hasta: fecha_fin },
+            moneda: homeCurrency,
+            total_general: parseFloat(grandTotal.toFixed(2)),
+            categoria_mayor_gasto: categorias[0]?.categoria || null,
+            categorias,
+            sugerencia_drill_down: "Podés pedirme el detalle de cualquier categoría, por ejemplo: 'mostrame los gastos de Alimentación'"
+        };
+    } else {
+        // Detalle mode
+        const transacciones = (data || []).map((tx: any) => ({
+            descripcion: tx.merchant_name,
+            monto: parseFloat((tx.amount_base || 0).toFixed(2)),
+            categoria: tx.categories?.name || "Sin categoría",
+            fecha: tx.created_at?.split("T")[0]
+        }));
+
+        return {
+            modo: "detalle",
+            rango: { desde: fecha_inicio, hasta: fecha_fin },
+            moneda: homeCurrency,
+            categoria_filtro: categoria_filtro || "todas",
+            total: parseFloat(transacciones.reduce((s: number, t: any) => s + t.monto, 0).toFixed(2)),
+            transacciones
+        };
+    }
 }
 
-async function callOpenAI(userMessage: string, history: any[] = [], profile: any): Promise<{ reply: string }> {
+async function callOpenAI(userMessage: string, history: ChatMessage[] = [], profile: any): Promise<{ reply: string }> {
     if (!OPENAI_API_KEY) {
         console.warn("⚠️ OPENAI_API_KEY no configurada.");
         return { reply: "Lo siento, no puedo responder en este momento. Intentá más tarde." };
     }
 
-    const messages = [
-        { role: "system", content: SYSTEM_PROMPT },
+    const dynamicSystemPrompt = `${SYSTEM_PROMPT}
+
+FECHA Y HORA ACTUAL:
+La fecha y hora actual del sistema es ${new Date().toISOString()}.
+Usá esta fecha como referencia exacta al calcular los parámetros fecha_inicio y fecha_fin (formato YYYY-MM-DD).
+
+REGLAS PARA INTERPRETAR FECHAS AL USAR consultar_gastos:
+- "hoy" → fecha_inicio y fecha_fin = fecha de hoy
+- "ayer" → fecha_inicio y fecha_fin = fecha de ayer
+- "esta semana" → fecha_inicio = lunes de esta semana, fecha_fin = hoy
+- "este mes" → fecha_inicio = primer día del mes actual, fecha_fin = hoy
+- "el mes pasado" → fecha_inicio y fecha_fin = rango completo del mes anterior
+- Una fecha específica como "1ero de enero", "15 de marzo", "January 1st" → fecha_inicio y fecha_fin = esa misma fecha exacta en formato YYYY-MM-DD
+- Un rango como "del 5 al 10 de febrero" o "from Jan 1 to Jan 31" → fecha_inicio = primer día del rango, fecha_fin = último día del rango
+- Si el usuario no menciona el año, asumir el año actual (${new Date().getFullYear()})
+- Nunca inventes fechas. Si no podés interpretar la fecha con certeza, preguntale al usuario que la aclare antes de invocar la herramienta.`;
+
+    const messages: any[] = [
+        { role: "system", content: dynamicSystemPrompt },
         ...history,
         { role: "user", content: userMessage }
     ];
@@ -406,7 +510,7 @@ async function callOpenAI(userMessage: string, history: any[] = [], profile: any
         let aiFinished = false;
         let finalReply = "";
 
-        while (!aiFinished) {
+        for (let iteration = 0; iteration < 5 && !aiFinished; iteration++) {
             const res = await fetch("https://api.openai.com/v1/chat/completions", {
                 method: "POST",
                 headers: {
@@ -444,8 +548,8 @@ async function callOpenAI(userMessage: string, history: any[] = [], profile: any
                     let toolResult = "";
 
                     if (toolCall.function.name === "registrar_gasto") {
-                        const success = await registrarGastoTool(args, profile, userMessage);
-                        toolResult = success ? "Avisale al usuario que el gasto se registró correctamente." : "Error al registrar gasto en BD.";
+                        const registerResult = await registrarGastoTool(args, profile, userMessage);
+                        toolResult = registerResult.message;
                     } else if (toolCall.function.name === "consultar_gastos") {
                         const resultData = await consultarGastosTool(args, profile);
                         toolResult = JSON.stringify(resultData);
