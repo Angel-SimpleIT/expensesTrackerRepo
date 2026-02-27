@@ -58,6 +58,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         home_currency: data.home_currency,
         bot_user_id: data.bot_user_id,
         pairing_code: data.pairing_code,
+        pairing_code_expires_at: data.pairing_code_expires_at,
         timezone: data.timezone,
       } as Profile;
     } catch (err: any) {
@@ -220,6 +221,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (updates.name !== undefined) dbUpdates.full_name = updates.name;
     if (updates.bot_user_id !== undefined) dbUpdates.bot_user_id = updates.bot_user_id;
     if (updates.pairing_code !== undefined) dbUpdates.pairing_code = updates.pairing_code;
+    if (updates.pairing_code_expires_at !== undefined) dbUpdates.pairing_code_expires_at = updates.pairing_code_expires_at;
     if (updates.home_currency !== undefined) dbUpdates.home_currency = updates.home_currency;
 
     const { error } = await supabase
@@ -243,6 +245,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (updates.name !== undefined) dbUpdates.full_name = updates.name;
     if (updates.bot_user_id !== undefined) dbUpdates.bot_user_id = updates.bot_user_id;
     if (updates.pairing_code !== undefined) dbUpdates.pairing_code = updates.pairing_code;
+    if (updates.pairing_code_expires_at !== undefined) dbUpdates.pairing_code_expires_at = updates.pairing_code_expires_at;
     if (updates.home_currency !== undefined) dbUpdates.home_currency = updates.home_currency;
     if (updates.timezone !== undefined) dbUpdates.timezone = updates.timezone;
 

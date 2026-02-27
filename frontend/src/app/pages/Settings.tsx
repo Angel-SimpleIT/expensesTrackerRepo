@@ -74,8 +74,9 @@ export function Settings() {
   const generatePairingCode = async () => {
     setIsGenerating(true);
     const code = Math.floor(100000 + Math.random() * 900000).toString();
+    const expiresAt = new Date(Date.now() + 15 * 60 * 1000).toISOString(); // 15 minutos en el futuro
     try {
-      await updateProfile({ pairing_code: code });
+      await updateProfile({ pairing_code: code, pairing_code_expires_at: expiresAt });
       setPairingCode(code);
       toast.success('Código de conexión generado. Envialo por WhatsApp.');
     } catch (error) {
@@ -111,7 +112,7 @@ export function Settings() {
 
   // Desvincular WhatsApp
   const unlinkWhatsApp = () => {
-    updateProfile({ bot_user_id: null, pairing_code: null });
+    updateProfile({ bot_user_id: null, pairing_code: null, pairing_code_expires_at: null });
     setPairingCode(null);
     toast.success('WhatsApp desvinculado correctamente');
   };
@@ -219,7 +220,7 @@ export function Settings() {
                   variant="ghost"
                   onClick={() => {
                     setPairingCode(null);
-                    updateProfile({ pairing_code: null });
+                    updateProfile({ pairing_code: null, pairing_code_expires_at: null });
                   }}
                   className="w-full text-[#6B7280] hover:text-[#09090b]"
                 >
