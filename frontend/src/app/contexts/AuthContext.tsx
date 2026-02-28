@@ -106,7 +106,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         // OR if the user ID changed
         // OR if it's a profile update event
         const currentProfileId = profileIdRef.current;
-        const needsFetch = !currentProfileId || currentProfileId !== user.id || event === 'USER_UPDATED';
+        // Only re-fetch profile if: no profile loaded yet, different user logged in, or explicit profile update needed.
+        // NOTE: USER_UPDATED fires when password is changed (recovery flow) — we don't re-fetch profile
+        // in that case because the profile data (name, currency, etc.) hasn't changed.
+        const needsFetch = !currentProfileId || currentProfileId !== user.id;
 
         if (needsFetch) {
           // Only show global loading on actual user change, not on metadata updates

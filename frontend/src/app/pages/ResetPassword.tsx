@@ -47,21 +47,24 @@ export function ResetPassword() {
 
         setLoading(true);
 
-        const result = await updatePassword(password);
+        try {
+            const result = await updatePassword(password);
 
-        if (result.success) {
-            setSuccess(true);
-            toast.success('Contraseña actualizada', {
-                description: 'Tu contraseña ha sido cambiada correctamente',
-            });
-            setTimeout(() => navigate('/login'), 2000);
-        } else {
-            setError(result.error || 'Error al actualizar la contraseña');
-            toast.error('Error', {
-                description: result.error || 'No se pudo actualizar la contraseña',
-            });
+            if (result.success) {
+                setSuccess(true);
+                toast.success('Contraseña actualizada', {
+                    description: 'Tu contraseña ha sido cambiada correctamente',
+                });
+                setTimeout(() => navigate('/login'), 2000);
+            } else {
+                setError(result.error || 'Error al actualizar la contraseña');
+                toast.error('Error', {
+                    description: result.error || 'No se pudo actualizar la contraseña',
+                });
+            }
+        } finally {
+            setLoading(false);
         }
-        setLoading(false);
     };
 
     return (
