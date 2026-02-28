@@ -13,8 +13,14 @@ const WHATSAPP_BOT_NUMBER = '123456789'; // Reemplaza con tu número de bot real
 export function Settings() {
   const { profile, updateProfile, user } = useAuth();
   const [pairingCode, setPairingCode] = useState<string | null>(profile?.pairing_code || null);
+  const [localIsConnected, setLocalIsConnected] = useState<boolean>(!!profile?.bot_user_id);
   const [isGenerating, setIsGenerating] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+
+  useEffect(() => {
+    setLocalIsConnected(!!profile?.bot_user_id);
+    setPairingCode(profile?.pairing_code || null);
+  }, [profile?.bot_user_id, profile?.pairing_code]);
 
   // Suscribirse a cambios en el perfil para actualización en tiempo real (vinculación WhatsApp)
   useEffect(() => {
@@ -36,9 +42,14 @@ export function Settings() {
           if (payload.new.pairing_code !== undefined) {
             setPairingCode(payload.new.pairing_code);
           }
-          // El profile en useAuth debería actualizarse si implementamos el refresco ahí,
-          // o podemos forzar una actualización local si es necesario.
-          // Por ahora, confiamos en que useAuth lo maneje o refrescamos manualmente si es necesario.
+          if (payload.new.bot_user_id) {
+            setLocalIsConnected(prev => {
+              if (!prev) toast.success('¡WhatsApp conectado exitosamente!');
+              return true;
+            });
+          } else {
+            setLocalIsConnected(false);
+          }
         }
       )
       .subscribe();
@@ -97,7 +108,7 @@ export function Settings() {
   // Abrir WhatsApp con mensaje predefinido
   const openWhatsApp = () => {
     if (pairingCode) {
-      const message = `CONECTAR ${pairingCode}`;
+      const message = pairingCode;
       const url = `https://wa.me/${WHATSAPP_BOT_NUMBER}?text=${encodeURIComponent(message)}`;
       window.open(url, '_blank');
     }
@@ -117,7 +128,7 @@ export function Settings() {
     toast.success('WhatsApp desvinculado correctamente');
   };
 
-  const isConnected = profile?.bot_user_id;
+  const isConnected = localIsConnected;
 
   return (
     <div className="p-8 max-w-4xl mx-auto">
@@ -210,7 +221,7 @@ export function Settings() {
                     <br />
                     1. Haz clic en <strong>"Abrir WhatsApp"</strong> o enviá manualmente el código.
                     <br />
-                    2. El mensaje debe ser: <code>CONECTAR {pairingCode}</code>
+                    2. El mensaje debe ser: <code>{pairingCode}</code>
                     <br />
                     3. Una vez enviado, esta pantalla se actualizará automáticamente.
                   </p>

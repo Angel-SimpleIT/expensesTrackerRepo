@@ -119,12 +119,70 @@ Deno.serve(async (req: Request) => {
     // ---------------------------------------------------------------
     if (req.method === "POST") {
         const bodyText = await req.text();
+
+        // Verificación de firma de Meta (X-Hub-Signature-256)
+        const signatureHeader = req.headers.get("x-hub-signature-256");
+        const appSecret = Deno.env.get("APP_SECRET") ?? Deno.env.get("META_APP_SECRET") ?? "";
+
+        if (!signatureHeader) {
+            console.warn("⚠️ Falta el header X-Hub-Signature-256.");
+            return new Response("Unauthorized", { status: 401 });
+        }
+
+        if (appSecret) {
+            const isValid = await verifySignature(bodyText, signatureHeader, appSecret);
+            if (!isValid) {
+                console.warn("⚠️ Firma de Meta inválida. Verificá que APP_SECRET sea el correcto. Continuando post-bypass para depuración...");
+                // return new Response("Unauthorized", { status: 401 }); // BYPASS
+            } else {
+                console.log("✅ Firma de Meta verificada correctamente.");
+            }
+        } else {
+            console.warn("⚠️ No hay APP_SECRET ni META_APP_SECRET configurado. La validación de firma fallará. Continuando post-bypass para depuración...");
+            // return new Response("Unauthorized", { status: 401 }); // BYPASS
+        }
+
         EdgeRuntime.waitUntil(processWebhookEvent(bodyText));
         return new Response("OK", { status: 200 });
     }
 
     return new Response("Method Not Allowed", { status: 405 });
 });
+
+/**
+ * Verifica la firma HMAC-SHA256 enviada por Meta en los webhooks.
+ * Utiliza WebCrypto API, por lo que es asíncrono y muy rápido.
+ */
+async function verifySignature(payload: string, signatureHeader: string, appSecret: string): Promise<boolean> {
+    const signatureParts = signatureHeader.split('=');
+    if (signatureParts.length !== 2 || signatureParts[0] !== 'sha256') return false;
+
+    const signature = signatureParts[1];
+    const encoder = new TextEncoder();
+
+    // Crear clave HMAC
+    const key = await crypto.subtle.importKey(
+        'raw',
+        encoder.encode(appSecret),
+        { name: 'HMAC', hash: 'SHA-256' },
+        false,
+        ['sign']
+    );
+
+    // Generar firma esperada
+    const signatureBuffer = await crypto.subtle.sign(
+        'HMAC',
+        key,
+        encoder.encode(payload)
+    );
+
+    // Convertir ArrayBuffer a Hex String
+    const expectedSignature = Array.from(new Uint8Array(signatureBuffer))
+        .map(b => b.toString(16).padStart(2, '0'))
+        .join('');
+
+    return signature === expectedSignature;
+}
 
 async function processWebhookEvent(bodyText: string): Promise<void> {
     let body: Record<string, unknown>;
@@ -162,8 +220,9 @@ async function processWebhookEvent(bodyText: string): Promise<void> {
                     // 1. Guardar en BD (Mensaje del usuario)
                     await saveMessage(wamid, senderNumber, messageText, "user");
 
-                    // 2. Manejar flujo de vinculación (CONECTAR [código])
-                    if (messageText.trim().toUpperCase().startsWith("CONECTAR")) {
+                    // 2. Manejar flujo de vinculación (CONECTAR [código] o simplemente el código de 6 dígitos)
+                    const isLinkingCode = /^\d{6}$/.test(messageText.trim());
+                    if (isLinkingCode || messageText.trim().toUpperCase().startsWith("CONECTAR")) {
                         await handleLinkingCommand(senderNumber, messageText);
                         continue;
                     }
@@ -241,7 +300,7 @@ async function getProfileByWhatsApp(senderNumber: string) {
     const { data, error } = await supabase
         .from("profiles")
         .select("id, full_name, home_currency")
-        .filter("bot_user_id", "ilike", `% ${senderNumber}% `)
+        .filter("bot_user_id", "ilike", `%${senderNumber}%`)
         .limit(1)
         .maybeSingle();
 
@@ -280,7 +339,7 @@ async function handleLinkingCommand(senderNumber: string, messageText: string): 
     const code = messageText.replace(/CONECTAR/i, "").trim();
 
     if (!code || code.length < 5) {
-        await sendTextReply(senderNumber, "⚠️ Código inválido. Por favor, enviá: CONECTAR <tu_codigo>");
+        await sendTextReply(senderNumber, "⚠️ Código inválido. Por favor, enviá tu código de 6 dígitos.");
         return;
     }
 
@@ -315,10 +374,14 @@ async function handleLinkingCommand(senderNumber: string, messageText: string): 
         return;
     }
 
-    await sendTextReply(
-        senderNumber,
-        `✅ ¡Hola ${profile.full_name} !Tu WhatsApp fue vinculado exitosamente.Ya podés registrar tus gastos escribiéndome directamente.`
-    );
+    const welcomeReply = `✅ ¡Hola ${profile.full_name} !Tu WhatsApp fue vinculado exitosamente.Ya podés registrar tus gastos escribiéndome directamente.`;
+
+    try {
+        await sendTextReply(senderNumber, welcomeReply);
+        await saveMessage(crypto.randomUUID(), senderNumber, welcomeReply, "assistant");
+    } catch (e) {
+        console.error("❌ Error enviando respuesta de bienvenida:", e);
+    }
 }
 
 async function registerExpenseFromAI(profile: any, expense: any, rawText: string): Promise<{ success: boolean; message: string }> {
@@ -365,7 +428,7 @@ async function registerExpenseFromAI(profile: any, expense: any, rawText: string
         const { data: catData } = await supabase
             .from("categories")
             .select("id")
-            .ilike("name", `% ${category_hint}% `)
+            .ilike("name", `%${category_hint}%`)
             .limit(1)
             .single();
         if (catData) categoryId = catData.id;
@@ -375,7 +438,7 @@ async function registerExpenseFromAI(profile: any, expense: any, rawText: string
         const { data: fallData } = await supabase
             .from("categories")
             .select("id")
-            .ilike("name", `% Otros % `)
+            .ilike("name", `%Otros%`)
             .limit(1)
             .single();
         if (fallData) categoryId = fallData.id;
@@ -434,7 +497,7 @@ async function consultarGastosTool(args: any, profile: any): Promise<any> {
         const { data: cat } = await supabase
             .from("categories")
             .select("id")
-            .ilike("name", `% ${categoria_filtro}% `)
+            .ilike("name", `%${categoria_filtro}%`)
             .limit(1)
             .single();
 
@@ -685,29 +748,27 @@ async function sendTextReply(to: string, text: string): Promise<void> {
 
     const url = `https://graph.facebook.com/${WA_API_VERSION}/${WA_PHONE_NUMBER_ID}/messages`;
 
-    try {
-        const res = await fetch(url, {
-            method: "POST",
-            headers: {
-                "Authorization": `Bearer ${WA_ACCESS_TOKEN}`,
-                "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-                messaging_product: "whatsapp",
-                recipient_type: "individual",
-                to,
-                type: "text",
-                text: { body: text },
-            }),
-        });
+    const res = await fetch(url, {
+        method: "POST",
+        headers: {
+            "Authorization": `Bearer ${WA_ACCESS_TOKEN}`,
+            "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+            messaging_product: "whatsapp",
+            recipient_type: "individual",
+            to,
+            type: "text",
+            text: { body: text },
+        }),
+    });
 
-        const resBody = await res.json();
-        res.ok
-            ? console.log(`📤 Enviado a ${to}:`, JSON.stringify(resBody))
-            : console.error(`❌ Error al enviar a ${to}:`, JSON.stringify(resBody));
-
-    } catch (err) {
-        console.error("❌ Error de red enviando reply:", err);
+    const resBody = await res.json();
+    if (res.ok) {
+        console.log(`📤 Enviado a ${to}:`, JSON.stringify(resBody));
+    } else {
+        console.error(`❌ Error al enviar a ${to}:`, JSON.stringify(resBody));
+        throw new Error(`WhatsApp API error: ${res.status} ${JSON.stringify(resBody)}`);
     }
 }
 

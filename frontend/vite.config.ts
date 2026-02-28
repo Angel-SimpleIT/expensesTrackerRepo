@@ -10,6 +10,9 @@ export default defineConfig({
     react(),
     tailwindcss(),
   ],
+  esbuild: {
+    pure: ['console.log'], // Elimina solo los console.log en producción
+  },
   resolve: {
     alias: {
       // Alias @ to the src directory
