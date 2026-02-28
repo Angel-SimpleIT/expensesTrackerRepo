@@ -10,7 +10,7 @@ interface AuthState {
 
 interface AuthContextType extends AuthState {
   signIn: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
-  signUp: (email: string, password: string, firstName: string, lastName: string) => Promise<{ success: boolean; error?: string; needsEmailConfirmation?: boolean }>;
+  signUp: (email: string, password: string, firstName: string, lastName: string, homeCurrency: string) => Promise<{ success: boolean; error?: string; needsEmailConfirmation?: boolean }>;
   signOut: () => Promise<void>;
   updateProfile: (updates: Partial<Profile>) => Promise<void>;
   resetPassword: (email: string) => Promise<{ success: boolean; error?: string }>;
@@ -207,7 +207,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const signUp = async (email: string, password: string, firstName: string, lastName: string): Promise<{ success: boolean; error?: string; needsEmailConfirmation?: boolean }> => {
+  const signUp = async (email: string, password: string, firstName: string, lastName: string, homeCurrency: string): Promise<{ success: boolean; error?: string; needsEmailConfirmation?: boolean }> => {
     try {
       const { data, error } = await supabase.auth.signUp({
         email,
@@ -218,6 +218,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             last_name: lastName,
             full_name: `${firstName} ${lastName}`.trim(),
             name: `${firstName} ${lastName}`.trim(),
+            home_currency: homeCurrency,
           },
         },
       });

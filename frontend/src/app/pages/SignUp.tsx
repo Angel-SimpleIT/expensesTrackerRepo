@@ -8,6 +8,7 @@ import { Input } from '../components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../components/ui/card';
 import { Checkbox } from '../components/ui/checkbox';
 import { TermsAndConditionsModal } from '../components/auth/TermsAndConditionsModal';
+import { CurrencySelectionModal } from '../components/auth/CurrencySelectionModal';
 
 export function SignUp() {
     const navigate = useNavigate();
@@ -19,6 +20,7 @@ export function SignUp() {
     const [confirmPassword, setConfirmPassword] = useState('');
     const [termsAccepted, setTermsAccepted] = useState(false);
     const [isTermsModalOpen, setIsTermsModalOpen] = useState(false);
+    const [isCurrencyModalOpen, setIsCurrencyModalOpen] = useState(false);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
     const [success, setSuccess] = useState(false);
@@ -52,9 +54,14 @@ export function SignUp() {
             return;
         }
 
-        setLoading(true);
+        setIsCurrencyModalOpen(true);
+    };
 
-        const result = await signUp(email, password, firstName, lastName);
+    const handleConfirmSignup = async (homeCurrency: string) => {
+        setLoading(true);
+        setError('');
+
+        const result = await signUp(email, password, firstName, lastName, homeCurrency);
 
         if (result.success) {
             if (result.needsEmailConfirmation) {
@@ -299,6 +306,13 @@ export function SignUp() {
             <TermsAndConditionsModal
                 isOpen={isTermsModalOpen}
                 onClose={() => setIsTermsModalOpen(false)}
+            />
+
+            <CurrencySelectionModal
+                isOpen={isCurrencyModalOpen}
+                onClose={() => setIsCurrencyModalOpen(false)}
+                onConfirm={handleConfirmSignup}
+                isLoading={loading}
             />
         </div>
     );

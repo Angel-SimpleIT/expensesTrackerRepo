@@ -8,8 +8,9 @@ import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '../co
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '../components/ui/alert-dialog';
 import { supabase } from '../../utils/supabase';
 import { Input } from '../components/ui/input';
+import { ChangeCurrencyModal } from '../components/auth/ChangeCurrencyModal';
 
-const WHATSAPP_BOT_NUMBER = '123456789'; // Reemplaza con tu número de bot real
+const WHATSAPP_BOT_NUMBER = '59894933034'; // Número de bot real
 
 export function Settings() {
   const { profile, updateProfile, user } = useAuth();
@@ -17,6 +18,8 @@ export function Settings() {
   const [localIsConnected, setLocalIsConnected] = useState<boolean>(!!profile?.bot_user_id);
   const [isGenerating, setIsGenerating] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isCurrencyModalOpen, setIsCurrencyModalOpen] = useState(false);
+  const [isUpdatingCurrency, setIsUpdatingCurrency] = useState(false);
 
   useEffect(() => {
     setLocalIsConnected(!!profile?.bot_user_id);
@@ -127,6 +130,20 @@ export function Settings() {
     updateProfile({ bot_user_id: null, pairing_code: null, pairing_code_expires_at: null });
     setPairingCode(null);
     toast.success('WhatsApp desvinculado correctamente');
+  };
+
+  const handleCurrencyChange = async (newCurrency: string) => {
+    setIsUpdatingCurrency(true);
+    try {
+      await updateProfile({ home_currency: newCurrency });
+      toast.success(`Moneda principal cambiada a ${newCurrency} exitosamente.`);
+      setIsCurrencyModalOpen(false);
+    } catch (error) {
+      console.error('Error updating currency:', error);
+      toast.error('Hubo un error al cambiar la moneda.');
+    } finally {
+      setIsUpdatingCurrency(false);
+    }
   };
 
   const isConnected = localIsConnected;
@@ -321,6 +338,26 @@ export function Settings() {
           </CardDescription>
         </CardHeader>
         <CardContent>
+          {/* Cambiar Moneda - Zona de Peligro */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-lg bg-red-50/50 border border-red-100 mb-4">
+            <div>
+              <p className="text-sm font-medium text-gray-900">Cambiar moneda principal</p>
+              <p className="text-sm text-gray-500 mt-1">
+                La moneda actual es <span className="font-bold text-red-700">{profile?.home_currency || 'USD'}</span>.
+                Cambiar esto afectará cómo se visualizan los montos y los reportes financieros.
+              </p>
+            </div>
+
+            <Button
+              variant="outline"
+              onClick={() => setIsCurrencyModalOpen(true)}
+              className="shrink-0 border-red-200 text-red-600 hover:bg-red-50"
+              disabled={isUpdatingCurrency}
+            >
+              Cambiar moneda
+            </Button>
+          </div>
+
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-lg bg-red-50/50 border border-red-100">
             <div>
               <p className="text-sm font-medium text-gray-900">Eliminar cuenta</p>
@@ -353,6 +390,14 @@ export function Settings() {
           </div>
         </CardContent>
       </Card>
+
+      <ChangeCurrencyModal
+        isOpen={isCurrencyModalOpen}
+        onClose={() => setIsCurrencyModalOpen(false)}
+        onConfirm={handleCurrencyChange}
+        currentCurrency={profile?.home_currency}
+        isLoading={isUpdatingCurrency}
+      />
     </div>
   );
 }
