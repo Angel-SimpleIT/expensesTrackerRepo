@@ -1,12 +1,13 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { MessageSquare, Link, CheckCircle, XCircle, Copy, ExternalLink, AlertTriangle } from 'lucide-react';
+import { MessageSquare, Link, CheckCircle, XCircle, Copy, ExternalLink, AlertTriangle, Lock, AlertCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '../components/ui/button';
 import { Badge } from '../components/ui/badge';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '../components/ui/card';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '../components/ui/alert-dialog';
 import { supabase } from '../../utils/supabase';
+import { Input } from '../components/ui/input';
 
 const WHATSAPP_BOT_NUMBER = '123456789'; // Reemplaza con tu número de bot real
 
@@ -266,7 +267,7 @@ export function Settings() {
       )}
 
       {/* Información de Cuenta */}
-      <Card>
+      <Card className="mb-6">
         <CardHeader>
           <CardTitle className="text-base">Información de Cuenta</CardTitle>
         </CardHeader>
@@ -291,6 +292,20 @@ export function Settings() {
               </div>
             </div>
           </div>
+        </CardContent>
+      </Card>
+
+      {/* Seguridad - Cambiar Contraseña */}
+      <Card className="mb-6">
+        <CardHeader>
+          <CardTitle className="text-base flex items-center gap-2">
+            <Lock className="w-4 h-4" />
+            Seguridad
+          </CardTitle>
+          <CardDescription>Actualiza tu contraseña de acceso</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <ChangePasswordForm />
         </CardContent>
       </Card>
 
@@ -339,5 +354,95 @@ export function Settings() {
         </CardContent>
       </Card>
     </div>
+  );
+}
+
+function ChangePasswordForm() {
+  const { updatePassword } = useAuth();
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError('');
+
+    if (password !== confirmPassword) {
+      setError('Las contraseñas no coinciden');
+      return;
+    }
+
+    if (password.length < 6) {
+      setError('La contraseña debe tener al menos 6 caracteres');
+      return;
+    }
+
+    setLoading(true);
+    const result = await updatePassword(password);
+
+    if (result.success) {
+      toast.success('Contraseña actualizada correctamente');
+      setPassword('');
+      setConfirmPassword('');
+    } else {
+      setError(result.error || 'Error al actualizar la contraseña');
+      toast.error('Error', {
+        description: result.error || 'No se pudo actualizar la contraseña',
+      });
+    }
+    setLoading(false);
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="space-y-2">
+          <label className="text-xs text-[#6B7280] uppercase tracking-wide">Nueva Contraseña</label>
+          <div className="relative">
+            <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--neutral-400)]" />
+            <Input
+              type="password"
+              placeholder="••••••••"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className="pl-9"
+              required
+            />
+          </div>
+        </div>
+        <div className="space-y-2">
+          <label className="text-xs text-[#6B7280] uppercase tracking-wide">Confirmar Contraseña</label>
+          <div className="relative">
+            <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--neutral-400)]" />
+            <Input
+              type="password"
+              placeholder="••••••••"
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              className="pl-9"
+              required
+            />
+          </div>
+        </div>
+      </div>
+
+      {error && (
+        <div className="flex items-center gap-2 p-3 bg-[var(--error-bg)]/10 border border-[var(--error-bg)] rounded-md text-[var(--error-text)] text-sm">
+          <AlertCircle className="w-4 h-4 flex-shrink-0" />
+          <p>{error}</p>
+        </div>
+      )}
+
+      <div className="flex justify-end">
+        <Button
+          type="submit"
+          isLoading={loading}
+          variant="primary"
+        >
+          Actualizar Contraseña
+        </Button>
+      </div>
+    </form>
   );
 }

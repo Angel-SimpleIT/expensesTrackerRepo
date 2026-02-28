@@ -121,6 +121,7 @@ export function Login() {
               <div className="text-center space-y-2 flex flex-col items-center">
                 <button
                   type="button"
+                  onClick={() => navigate('/forgot-password')}
                   className="text-sm text-[var(--primary-main)] hover:text-[var(--primary-dark)] font-medium transition-colors hover:underline"
                 >
                   ¿Olvidaste tu contraseña?

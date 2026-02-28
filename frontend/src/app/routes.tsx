@@ -4,6 +4,8 @@ import { Analytics } from "./pages/Analytics";
 import { History } from "./pages/History";
 import { Login } from "./pages/Login";
 import { SignUp } from "./pages/SignUp";
+import { ForgotPassword } from "./pages/ForgotPassword";
+import { ResetPassword } from "./pages/ResetPassword";
 import { Settings } from "./pages/Settings";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import { Layout } from "./components/Layout";
@@ -18,6 +20,14 @@ export const router = createBrowserRouter([
   {
     path: "/signup",
     Component: SignUp,
+  },
+  {
+    path: "/forgot-password",
+    Component: ForgotPassword,
+  },
+  {
+    path: "/reset-password",
+    Component: ResetPassword,
   },
   {
     path: "/",

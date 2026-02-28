@@ -13,6 +13,8 @@ interface AuthContextType extends AuthState {
   signUp: (email: string, password: string, firstName: string, lastName: string) => Promise<{ success: boolean; error?: string; needsEmailConfirmation?: boolean }>;
   signOut: () => Promise<void>;
   updateProfile: (updates: Partial<Profile>) => Promise<void>;
+  resetPassword: (email: string) => Promise<{ success: boolean; error?: string }>;
+  updatePassword: (newPassword: string) => Promise<{ success: boolean; error?: string }>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -97,52 +99,52 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return;
       }
 
-      if (session?.user) {
-        // If it's a critical event, fetch the profile
-        if (event === 'SIGNED_IN' || event === 'USER_UPDATED' || event === 'INITIAL_SESSION') {
-          // Check against the ref to avoid dependency cycles
-          const currentProfileId = profileIdRef.current;
-          const needsProfileFetch = !currentProfileId || currentProfileId !== session.user.id || event === 'USER_UPDATED';
+      const user = session?.user || null;
 
-          if (needsProfileFetch) {
-            setState(prev => ({ ...prev, user: session.user, loading: true }));
-            const profile = await getProfileData(session.user.id);
-            if (!mounted) return;
-            setState({
-              user: session.user,
-              profile,
+      if (user) {
+        // If we don't have a profile yet (initial load or sign in)
+        // OR if the user ID changed
+        // OR if it's a profile update event
+        const currentProfileId = profileIdRef.current;
+        const needsFetch = !currentProfileId || currentProfileId !== user.id || event === 'USER_UPDATED';
+
+        if (needsFetch) {
+          // Only show global loading on actual user change, not on metadata updates
+          const isNewUser = !currentProfileId || currentProfileId !== user.id;
+          if (isNewUser) {
+            setState(prev => ({ ...prev, user, loading: true }));
+          } else {
+            setState(prev => ({ ...prev, user }));
+          }
+
+          const profile = await getProfileData(user.id);
+
+          if (mounted) {
+            setState(prev => ({
+              user,
+              profile: profile || prev.profile,
               loading: false
-            });
-            console.log('[Auth] Profile loaded', { profileId: profile?.id });
+            }));
 
-            // Detect and auto-update timezone
             if (profile) {
+              console.log('[Auth] Profile loaded', { profileId: profile.id });
               const browserTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
               if (profile.timezone !== browserTimezone) {
-                console.log(`[Auth] Timezone mismatch: ${profile.timezone} vs ${browserTimezone}. Updating...`);
-                // Update in DB and background update state
-                updateProfileInContext(session.user.id, { timezone: browserTimezone });
+                updateProfileInContext(user.id, { timezone: browserTimezone });
               }
             }
-          } else {
-            // Just update the user object
-            if (!mounted) return;
-            setState(prev => ({ ...prev, user: session.user, loading: false }));
           }
         } else {
-          // For other events (like TOKEN_REFRESHED), just update the user object
-          // but don't re-trigger loading if we already have a profile.
-          if (!mounted) return;
-          setState(prev => ({
-            ...prev,
-            user: session.user,
-            loading: prev.profile ? false : prev.loading
-          }));
+          // Already have profile, just update user (e.g. token refresh)
+          if (mounted) {
+            setState(prev => ({ ...prev, user, loading: false }));
+          }
         }
       } else {
-        // No session
-        if (!mounted) return;
-        setState({ user: null, profile: null, loading: false });
+        // No user session
+        if (mounted) {
+          setState({ user: null, profile: null, loading: false });
+        }
       }
     });
 
@@ -153,9 +155,41 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
   }, []);
 
+  const resetPassword = async (email: string): Promise<{ success: boolean; error?: string }> => {
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/reset-password`,
+      });
+
+      if (error) {
+        return { success: false, error: error.message };
+      }
+
+      return { success: true };
+    } catch (err: any) {
+      return { success: false, error: err.message || 'Error inesperado' };
+    }
+  };
+
+  const updatePassword = async (newPassword: string): Promise<{ success: boolean; error?: string }> => {
+    try {
+      const { error } = await supabase.auth.updateUser({
+        password: newPassword,
+      });
+
+      if (error) {
+        return { success: false, error: error.message };
+      }
+
+      return { success: true };
+    } catch (err: any) {
+      return { success: false, error: err.message || 'Error inesperado' };
+    }
+  };
+
   const signIn = async (email: string, password: string): Promise<{ success: boolean; error?: string }> => {
     try {
-      const { data, error } = await supabase.auth.signInWithPassword({
+      const { error } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
@@ -164,18 +198,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return { success: false, error: error.message };
       }
 
-      // Fallback: If onAuthStateChange doesn't fire (e.g., already signed in but profile fetch previously failed)
-      if (data.session && (!state.profile || state.user?.id !== data.session.user.id)) {
-        setState(prev => ({ ...prev, user: data.session.user, loading: true }));
-        const profile = await getProfileData(data.session.user.id);
-        setState({
-          user: data.session.user,
-          profile,
-          loading: false
-        });
-      }
-
-      // onAuthStateChange(SIGNED_IN) handles everything else
       return { success: true };
     } catch (err: any) {
       return { success: false, error: err.message || 'Error inesperado' };
@@ -266,7 +288,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ ...state, signIn, signUp, signOut, updateProfile }}>
+    <AuthContext.Provider value={{ ...state, signIn, signUp, signOut, updateProfile, resetPassword, updatePassword }}>
       {children}
     </AuthContext.Provider>
   );
